@@ -7,10 +7,11 @@ import {
   Grid,
   Package,
   ShoppingCart,
-  Tag
+  Tag,
+  X
 } from 'lucide-react';
 
-const Sidebar = () => {
+const Sidebar = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -28,10 +29,15 @@ const Sidebar = () => {
   ];
 
   return (
-    <div style={styles.sidebar}>
+    <div className={`sidebar-container ${isOpen ? 'open' : ''}`} style={styles.sidebar}>
       <div style={styles.logoContainer}>
-        <div style={styles.logoIcon}>A</div>
-        <h2 style={styles.logoText}>ANGARA</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={styles.logoIcon}>A</div>
+          <h2 style={styles.logoText}>ANGARA</h2>
+        </div>
+        <button className="mobile-header-btn" onClick={onClose} style={styles.closeBtn}>
+          <X size={24} />
+        </button>
       </div>
 
       <nav style={styles.nav}>
@@ -39,6 +45,9 @@ const Sidebar = () => {
           <NavLink
             key={item.name}
             to={item.path}
+            onClick={() => {
+              if (window.innerWidth <= 1100) onClose();
+            }}
             style={({ isActive }) => ({
               ...styles.navItem,
               backgroundColor: isActive ? 'var(--primary-yellow)' : 'transparent',
@@ -76,12 +85,12 @@ const styles = {
     position: 'fixed',
     left: 0,
     top: 0,
-    transition: 'all 0.3s ease',
+    transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
   },
   logoContainer: {
     display: 'flex',
     alignItems: 'center',
-    gap: '1rem',
+    justifyContent: 'space-between',
     marginBottom: '3rem',
     padding: '0 0.5rem',
   },
@@ -101,6 +110,10 @@ const styles = {
     fontSize: '1.5rem',
     fontWeight: '800',
     letterSpacing: '2px',
+    color: 'var(--text-main)',
+  },
+  closeBtn: {
+    display: 'none',
     color: 'var(--text-main)',
   },
   nav: {

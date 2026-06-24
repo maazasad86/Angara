@@ -70,7 +70,7 @@ const POS = () => {
 
   return (
     <Layout>
-      <div style={styles.posContainer}>
+      <div className="responsive-flex" style={styles.posContainer}>
         {/* Left Side: Items Selection */}
         <div style={styles.menuSide}>
           <div style={styles.menuHeader}>
@@ -112,7 +112,7 @@ const POS = () => {
             </div>
           </div>
 
-          <div style={styles.itemsGrid}>
+          <div className="items-grid" style={styles.itemsGrid}>
             {loading ? (
               <p>Loading items...</p>
             ) : filteredItems.length > 0 ? (
@@ -125,13 +125,13 @@ const POS = () => {
                 >
                   <div style={styles.itemImageContainer}>
                     <img src={item.image} alt={item.name} style={styles.itemImage} />
-                    <div style={styles.priceBadge}>${item.price}</div>
+                    <div style={styles.priceBadge}>Rs. {item.price}</div>
                   </div>
                   <div style={styles.cardInfo}>
                     <h4 style={styles.itemName}>{item.name}</h4>
-                    <button style={styles.addBtn}>
+                    <div style={styles.addBtn}>
                       <Plus size={16} />
-                    </button>
+                    </div>
                   </div>
                 </div>
               ))
@@ -145,9 +145,9 @@ const POS = () => {
         </div>
 
         {/* Right Side: Billing */}
-        <div className="glass-card" style={styles.billSide}>
+        <div className="glass-card fixed-side-panel" style={styles.billSide}>
           <div style={styles.billHeader}>
-            <h3>Current Order</h3>
+            <h3 style={{ fontWeight: '800' }}>Current Order</h3>
             <ShoppingCart size={24} />
           </div>
 
@@ -157,7 +157,7 @@ const POS = () => {
                 <div key={item._id} style={styles.cartItem}>
                   <div style={styles.cartItemInfo}>
                     <p style={styles.cartItemName}>{item.name}</p>
-                    <p style={styles.cartItemPrice}>${item.price} x {item.quantity}</p>
+                    <p style={styles.cartItemPrice}>Rs. {item.price} x {item.quantity}</p>
                   </div>
                   <div style={styles.qtyControls}>
                     <button onClick={() => updateQuantity(item._id, -1)} style={styles.qtyBtn}><Minus size={14} /></button>
@@ -169,7 +169,7 @@ const POS = () => {
               ))
             ) : (
               <div style={styles.emptyCart}>
-                <ShoppingCart size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
+                <ShoppingCart size={48} style={{ opacity: 0.1, marginBottom: '1rem' }} />
                 <p>Your cart is empty</p>
               </div>
             )}
@@ -179,15 +179,15 @@ const POS = () => {
             <div style={styles.billSummary}>
               <div style={styles.summaryRow}>
                 <span>Subtotal</span>
-                <span>${total.toFixed(2)}</span>
+                <span>Rs. {total.toFixed(2)}</span>
               </div>
               <div style={styles.summaryRow}>
                 <span>Tax (0%)</span>
-                <span>$0.00</span>
+                <span>Rs. 0.00</span>
               </div>
               <div style={{ ...styles.summaryRow, ...styles.totalRow }}>
                 <span>Total Amount</span>
-                <span>${total.toFixed(2)}</span>
+                <span>Rs. {total.toFixed(2)}</span>
               </div>
             </div>
 
@@ -213,13 +213,13 @@ const POS = () => {
         {cart.map(item => (
           <div key={item._id} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
             <span>{item.name} x {item.quantity}</span>
-            <span>${(item.price * item.quantity).toFixed(2)}</span>
+            <span>Rs. {(item.price * item.quantity).toFixed(2)}</span>
           </div>
         ))}
         <hr />
         <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
           <span>Grand Total</span>
-          <span>${total.toFixed(2)}</span>
+          <span>Rs. {total.toFixed(2)}</span>
         </div>
         <p style={{ textAlign: 'center', marginTop: '1rem' }}>Thank you for your visit!</p>
       </div>
@@ -283,7 +283,7 @@ const styles = {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
     gap: '1rem',
-    paddingRight: '0.5rem',
+    paddingRight: '0.55rem',
   },
   itemCard: {
     padding: '0.75rem',
@@ -313,7 +313,7 @@ const styles = {
     backgroundColor: 'var(--primary-yellow)',
     color: '#000',
     borderRadius: '6px',
-    fontSize: '0.7rem',
+    fontSize: '0.75rem',
     fontWeight: '800',
   },
   cardInfo: {
@@ -341,10 +341,10 @@ const styles = {
   },
   
   billSide: {
-    width: '360px',
+    width: '380px',
     display: 'flex',
     flexDirection: 'column',
-    padding: '1.25rem',
+    padding: '1.5rem',
     backgroundColor: 'var(--bg-card)',
   },
   billHeader: {
@@ -367,9 +367,9 @@ const styles = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: '0.6rem 0.75rem',
+    padding: '0.75rem',
     backgroundColor: 'rgba(255,255,255,0.02)',
-    borderRadius: '10px',
+    borderRadius: '12px',
     border: '1px solid var(--glass-border)',
   },
   cartItemName: {
@@ -431,7 +431,7 @@ const styles = {
     paddingTop: '0.4rem',
     borderTop: '1px dashed var(--glass-border)',
     color: 'var(--text-main)',
-    fontSize: '1rem',
+    fontSize: '1.1rem',
     fontWeight: '800',
   },
   printBtn: {
@@ -464,25 +464,5 @@ const styles = {
     display: 'none',
   }
 };
-
-// Add this to your index.css for printing
-const printStyles = `
-@media print {
-  body * {
-    visibility: hidden;
-  }
-  #print-area, #print-area * {
-    visibility: visible;
-  }
-  #print-area {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    padding: 2rem;
-    color: black !important;
-  }
-}
-`;
 
 export default POS;

@@ -145,23 +145,23 @@ const Deals = () => {
 
   return (
     <Layout>
-      <div style={styles.header}>
-        <div style={styles.headerInfo}>
-          <Tag size={28} style={{ color: 'var(--primary-yellow)' }} />
-          <div>
-            <h2 style={{ fontSize: '1.5rem', fontWeight: '800' }}>Deals Management</h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Create and manage combo offers</p>
+      {!isCreating && (
+        <div style={styles.header}>
+          <div style={styles.headerInfo}>
+            <Tag size={28} style={{ color: 'var(--primary-yellow)' }} />
+            <div>
+              <h2 style={{ fontSize: '1.5rem', fontWeight: '800' }}>Deals Management</h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Create and manage combo offers</p>
+            </div>
           </div>
-        </div>
-        {!isCreating && (
           <button onClick={handleCreateNew} className="btn-primary" style={styles.createBtn}>
-            <Plus size={20} /> Create New Deal
+            <Plus size={20} /> New Deal
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {!isCreating ? (
-        <div style={styles.dealsGrid}>
+        <div className="items-grid" style={styles.dealsGrid}>
           {deals.length > 0 ? (
             deals.map(deal => (
               <div key={deal._id} className="glass-card" style={styles.dealCard}>
@@ -200,7 +200,7 @@ const Deals = () => {
           )}
         </div>
       ) : (
-        <div style={styles.creatorContainer}>
+        <div className="responsive-flex" style={styles.creatorContainer}>
           {/* Item Selector Side */}
           <div style={styles.itemsSide}>
             <div style={styles.selectorHeader}>
@@ -246,7 +246,7 @@ const Deals = () => {
               </div>
             </div>
 
-            <div style={styles.itemsGridSmall}>
+            <div className="items-grid" style={styles.itemsGridSmall}>
               {filteredItems.map(item => (
                 <div 
                   key={item._id} 
@@ -266,9 +266,9 @@ const Deals = () => {
           </div>
 
           {/* Deal Config Side */}
-          <div className="glass-card" style={styles.configSide}>
+          <div className="glass-card fixed-side-panel" style={styles.configSide}>
             <div style={styles.configHeader}>
-              <h3>{editingId ? 'Edit Deal' : 'New Deal Setup'}</h3>
+              <h3 style={{ fontWeight: '800' }}>{editingId ? 'Edit Deal' : 'New Deal Setup'}</h3>
               <Tag size={20} style={{ opacity: 0.5 }} />
             </div>
 
@@ -349,12 +349,13 @@ const styles = {
     gap: '1rem',
   },
   createBtn: {
-    padding: '0.75rem 1.5rem',
+    padding: '0.75rem 1.25rem',
     gap: '0.5rem',
+    fontSize: '0.9rem',
   },
   dealsGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
     gap: '1.5rem',
   },
   dealCard: {
@@ -577,7 +578,7 @@ const styles = {
     alignItems: 'center',
     padding: '0.75rem',
     backgroundColor: 'rgba(255,255,255,0.02)',
-    borderRadius: '10px',
+    borderRadius: '12px',
     border: '1px solid var(--glass-border)',
   },
   selInfo: {
