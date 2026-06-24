@@ -6,6 +6,7 @@ import Categories from './pages/Categories';
 import Items from './pages/Items';
 import POS from './pages/POS';
 import Deals from './pages/Deals';
+import { Agentation } from 'agentation';
 
 // Simple Protected Route
 const ProtectedRoute = ({ children }) => {
@@ -69,6 +70,7 @@ function App() {
         />
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
       </Routes>
+      {process.env.NODE_ENV === 'development' && <Agentation />}
     </Router>
   );
 }
