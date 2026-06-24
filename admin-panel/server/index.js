@@ -15,6 +15,7 @@ app.use(express.json());
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/categories', require('./routes/categories'));
 app.use('/api/items', require('./routes/items'));
+app.use('/api/deals', require('./routes/deals'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard';
 import Categories from './pages/Categories';
 import Items from './pages/Items';
 import POS from './pages/POS';
+import Deals from './pages/Deals';
 
 // Simple Protected Route
 const ProtectedRoute = ({ children }) => {
@@ -55,6 +56,14 @@ function App() {
           element={
             <ProtectedRoute>
               <POS />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/deals" 
+          element={
+            <ProtectedRoute>
+              <Deals />
             </ProtectedRoute>
           } 
         />

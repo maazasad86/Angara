@@ -6,7 +6,8 @@ import {
   ChevronRight,
   Grid,
   Package,
-  ShoppingCart
+  ShoppingCart,
+  Tag
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -21,6 +22,7 @@ const Sidebar = () => {
   const menuItems = [
     { name: 'Dashboard', path: '/dashboard', icon: <LayoutDashboard size={20} /> },
     { name: 'POS', path: '/pos', icon: <ShoppingCart size={20} /> },
+    { name: 'Deals', path: '/deals', icon: <Tag size={20} /> },
     { name: 'Categories', path: '/categories', icon: <Grid size={20} /> },
     { name: 'Items', path: '/items', icon: <Package size={20} /> },
   ];
