@@ -21,6 +21,10 @@ const POS = () => {
   const [printType, setPrintType] = useState('RECEIPT');
   const [heldOrders, setHeldOrders] = useState([]);
   const [showHeldModal, setShowHeldModal] = useState(false);
+  
+  // Custom Modal for Hold Bill
+  const [showHoldPrompt, setShowHoldPrompt] = useState(false);
+  const [holdNoteInput, setHoldNoteInput] = useState('');
 
   useEffect(() => {
     fetchData();
@@ -90,9 +94,14 @@ const POS = () => {
     }, 100);
   };
 
-  const handleHoldOrder = () => {
+  const handleHoldOrderClick = () => {
     if (cart.length === 0) return;
-    const note = window.prompt("Enter Table No. or Name (e.g., Table 4, Ali):") || `Order ${new Date().toLocaleTimeString()}`;
+    setHoldNoteInput('');
+    setShowHoldPrompt(true);
+  };
+
+  const confirmHoldOrder = () => {
+    const note = holdNoteInput.trim() || `Order ${new Date().toLocaleTimeString()}`;
     const newHold = {
       id: Date.now().toString(),
       note,
@@ -111,6 +120,7 @@ const POS = () => {
     setOrderType('Takeaway');
     setCustomerName('');
     setCustomerPhone('');
+    setShowHoldPrompt(false);
   };
 
   const handleResumeOrder = (heldOrder) => {
@@ -390,7 +400,7 @@ const POS = () => {
 
             <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
               <button 
-                onClick={handleHoldOrder} 
+                onClick={handleHoldOrderClick} 
                 style={{...styles.printBtn, flex: 1, backgroundColor: 'var(--glass)', border: '1px solid var(--glass-border)', color: 'var(--text-main)'}}
                 disabled={cart.length === 0}
               >
@@ -498,6 +508,35 @@ const POS = () => {
                 ))}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Hold Bill Prompt Modal */}
+      {showHoldPrompt && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="glass-card" style={{ width: '400px', padding: '2rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h2 style={{ color: 'var(--text-main)', fontSize: '1.25rem' }}>Hold Bill</h2>
+              <button onClick={() => setShowHoldPrompt(false)} style={{ backgroundColor: 'transparent', border: 'none', color: 'var(--text-main)', cursor: 'pointer' }}><X size={24} /></button>
+            </div>
+            
+            <p style={{ color: 'var(--text-muted)', marginBottom: '1rem', fontSize: '0.9rem' }}>Enter Table No. or Customer Name (e.g., Table 4, Ali):</p>
+            
+            <input 
+              type="text" 
+              value={holdNoteInput}
+              onChange={(e) => setHoldNoteInput(e.target.value)}
+              placeholder="Note / Table No."
+              style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--glass-border)', backgroundColor: 'var(--bg)', color: 'var(--text-main)', marginBottom: '1.5rem', fontSize: '1rem' }}
+              autoFocus
+              onKeyDown={(e) => e.key === 'Enter' && confirmHoldOrder()}
+            />
+            
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <button onClick={() => setShowHoldPrompt(false)} style={{ flex: 1, padding: '0.8rem', backgroundColor: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-main)', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>Cancel</button>
+              <button onClick={confirmHoldOrder} style={{ flex: 1, padding: '0.8rem', backgroundColor: 'var(--primary-yellow)', color: '#000', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>Save Bill</button>
+            </div>
           </div>
         </div>
       )}
