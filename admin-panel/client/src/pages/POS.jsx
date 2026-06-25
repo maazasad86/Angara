@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Layout from '../components/Layout';
 import { Spinner } from '../components/ui/spinner-1';
-import { Search, Plus, Minus, Trash2, Printer, ShoppingCart, Package, Tag } from 'lucide-react';
+import { Search, Plus, Minus, Trash2, Printer, ShoppingCart, Package, Tag, X, Clock } from 'lucide-react';
 
 const POS = () => {
   const [items, setItems] = useState([]);
@@ -17,9 +17,19 @@ const POS = () => {
   const [orderType, setOrderType] = useState('Takeaway');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerName, setCustomerName] = useState('');
+  
+  const [printType, setPrintType] = useState('RECEIPT');
+  const [heldOrders, setHeldOrders] = useState([]);
+  const [showHeldModal, setShowHeldModal] = useState(false);
 
   useEffect(() => {
     fetchData();
+    const storedHolds = localStorage.getItem('angaara_held_orders');
+    if (storedHolds) {
+      try {
+        setHeldOrders(JSON.parse(storedHolds));
+      } catch (e) { console.error(e); }
+    }
   }, []);
 
   const fetchData = async () => {
@@ -73,7 +83,60 @@ const POS = () => {
         return matchesCategory && matchesSearch;
       });
 
-  const handlePrint = async () => {
+  const handlePrintKOT = () => {
+    setPrintType('KOT');
+    setTimeout(() => {
+      window.print();
+    }, 100);
+  };
+
+  const handleHoldOrder = () => {
+    if (cart.length === 0) return;
+    const note = window.prompt("Enter Note/Table for Held Order (e.g., Table 4):") || `Order ${new Date().toLocaleTimeString()}`;
+    const newHold = {
+      id: Date.now().toString(),
+      note,
+      cart,
+      orderType,
+      customerName,
+      customerPhone,
+      total,
+      time: new Date().toLocaleTimeString()
+    };
+    const updatedHolds = [...heldOrders, newHold];
+    setHeldOrders(updatedHolds);
+    localStorage.setItem('angaara_held_orders', JSON.stringify(updatedHolds));
+    
+    setCart([]);
+    setOrderType('Takeaway');
+    setCustomerName('');
+    setCustomerPhone('');
+  };
+
+  const handleResumeOrder = (heldOrder) => {
+    if (cart.length > 0) {
+      if (!window.confirm("Current cart is not empty. Replace it?")) return;
+    }
+    setCart(heldOrder.cart);
+    setOrderType(heldOrder.orderType);
+    setCustomerName(heldOrder.customerName || '');
+    setCustomerPhone(heldOrder.customerPhone || '');
+    
+    const updatedHolds = heldOrders.filter(h => h.id !== heldOrder.id);
+    setHeldOrders(updatedHolds);
+    localStorage.setItem('angaara_held_orders', JSON.stringify(updatedHolds));
+    setShowHeldModal(false);
+  };
+  
+  const handleDeleteHold = (id) => {
+    if(!window.confirm("Delete this parked order permanently?")) return;
+    const updatedHolds = heldOrders.filter(h => h.id !== id);
+    setHeldOrders(updatedHolds);
+    localStorage.setItem('angaara_held_orders', JSON.stringify(updatedHolds));
+  };
+
+  const handleCheckoutAndPrint = async () => {
+    setPrintType('RECEIPT');
     try {
       const saleItems = cart.map(item => ({
         itemId: item._id,
@@ -92,11 +155,13 @@ const POS = () => {
         customerPhone: orderType === 'Delivery' ? customerPhone : ''
       });
 
-      window.print();
-      setCart([]);
-      setOrderType('Takeaway');
-      setCustomerName('');
-      setCustomerPhone('');
+      setTimeout(() => {
+        window.print();
+        setCart([]);
+        setOrderType('Takeaway');
+        setCustomerName('');
+        setCustomerPhone('');
+      }, 100);
     } catch (err) {
       console.error('Error recording sale:', err);
       alert('Failed to save sale to records: ' + (err.response?.data?.message || err.message));
@@ -327,28 +392,52 @@ const POS = () => {
               </div>
             </div>
 
-            <button 
-              onClick={handlePrint} 
-              style={styles.printBtn} 
-              className="btn-primary"
-              disabled={cart.length === 0}
-            >
-              <Printer size={20} /> Print Receipt
-            </button>
+            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+              <button 
+                onClick={handleHoldOrder} 
+                style={{...styles.printBtn, flex: 1, backgroundColor: 'var(--glass)', border: '1px solid var(--glass-border)', color: 'var(--text-main)'}}
+                disabled={cart.length === 0}
+              >
+                Hold Order
+              </button>
+              <button 
+                onClick={() => setShowHeldModal(true)} 
+                style={{...styles.printBtn, flex: 1, backgroundColor: 'var(--glass)', border: '1px solid var(--glass-border)', color: 'var(--text-main)'}}
+              >
+                Recall ({heldOrders.length})
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button 
+                onClick={handlePrintKOT} 
+                style={{...styles.printBtn, flex: 1, backgroundColor: '#ef4444', color: '#fff', border: 'none'}}
+                disabled={cart.length === 0}
+              >
+                Print KOT
+              </button>
+              <button 
+                onClick={handleCheckoutAndPrint} 
+                style={{...styles.printBtn, flex: 1.5}} 
+                className="btn-primary"
+                disabled={cart.length === 0}
+              >
+                <Printer size={20} /> Checkout
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Print-only View (Hidden in normal UI) */}
       <div id="print-area" style={styles.printOnly}>
         <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
-          <h2>ANGARA RESTAURANT</h2>
-          <p>Order Summary</p>
+          <h2>{printType === 'KOT' ? 'KOT - KITCHEN' : 'ANGARA RESTAURANT'}</h2>
+          <p>{printType === 'KOT' ? 'Kitchen Order Ticket' : 'Order Summary'}</p>
           <p style={{ fontWeight: 'bold', fontSize: '1.2rem', margin: '0.5rem 0', padding: '0.2rem', border: '1px solid #000' }}>{orderType.toUpperCase()}</p>
-          {orderType === 'Delivery' && (
+          {(orderType === 'Delivery' || orderType === 'Takeaway' || orderType === 'Dine-in') && (
             <div style={{ fontSize: '0.9rem', marginBottom: '0.5rem' }}>
-              <p>Name: {customerName || 'N/A'}</p>
-              <p>Phone: {customerPhone || 'N/A'}</p>
+              {customerName && <p>Name: {customerName}</p>}
+              {customerPhone && <p>Phone: {customerPhone}</p>}
             </div>
           )}
           <hr />
@@ -356,8 +445,8 @@ const POS = () => {
         {cart.map(item => (
           <div key={item._id} style={{ marginBottom: '0.75rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ fontWeight: 'bold' }}>{item.name} x {item.quantity}</span>
-              <span>Rs. {(item.price * item.quantity).toFixed(2)}</span>
+              <span style={{ fontWeight: 'bold' }}>{item.quantity}x {item.name}</span>
+              {printType === 'RECEIPT' && <span>Rs. {(item.price * item.quantity).toFixed(2)}</span>}
             </div>
             {/* If it's a Deal, list sub-items on receipt */}
             {item.items && item.items.length > 0 && (
@@ -372,12 +461,50 @@ const POS = () => {
           </div>
         ))}
         <hr />
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
-          <span>Grand Total</span>
-          <span>Rs. {total.toFixed(2)}</span>
-        </div>
-        <p style={{ textAlign: 'center', marginTop: '1rem' }}>Thank you for your visit!</p>
+        {printType === 'RECEIPT' && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
+            <span>Grand Total</span>
+            <span>Rs. {total.toFixed(2)}</span>
+          </div>
+        )}
+        <p style={{ textAlign: 'center', marginTop: '1rem' }}>
+          {printType === 'KOT' ? `Time: ${new Date().toLocaleTimeString()}` : 'Thank you for your visit!'}
+        </p>
       </div>
+
+      {/* Held Orders Modal */}
+      {showHeldModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="glass-card" style={{ width: '500px', maxHeight: '80vh', overflowY: 'auto', padding: '2rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-main)' }}><Clock size={24} /> Parked Orders ({heldOrders.length})</h2>
+              <button onClick={() => setShowHeldModal(false)} style={{ backgroundColor: 'transparent', border: 'none', color: 'var(--text-main)', cursor: 'pointer' }}><X size={24} /></button>
+            </div>
+            
+            {heldOrders.length === 0 ? (
+              <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '2rem 0' }}>No parked orders.</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {heldOrders.map(ho => (
+                  <div key={ho.id} style={{ border: '1px solid var(--glass-border)', padding: '1rem', borderRadius: '8px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                      <strong style={{ fontSize: '1.1rem', color: 'var(--text-main)' }}>{ho.note}</strong>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{ho.time}</span>
+                    </div>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+                      <span style={{ color: 'var(--primary-yellow)', fontWeight: 'bold' }}>{ho.orderType}</span> • Rs. {ho.total} • {ho.cart.length} items
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button onClick={() => handleResumeOrder(ho)} style={{ flex: 1, padding: '0.6rem', backgroundColor: 'var(--primary-yellow)', color: '#000', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Resume Order</button>
+                      <button onClick={() => handleDeleteHold(ho.id)} style={{ padding: '0.6rem', backgroundColor: 'rgba(239, 68, 68, 0.2)', color: '#ef4444', border: 'none', borderRadius: '4px', cursor: 'pointer' }}><Trash2 size={16} /></button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </Layout>
   );
 };
