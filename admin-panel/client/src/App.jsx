@@ -7,7 +7,6 @@ import Items from './pages/Items';
 import POS from './pages/POS';
 import Deals from './pages/Deals';
 import { Agentation } from 'agentation';
-
 // Simple Protected Route
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('token');
@@ -70,7 +69,14 @@ function App() {
         />
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
       </Routes>
-      {import.meta.env.MODE === 'development' && <Agentation />}
+      {import.meta.env.MODE === 'development' && (
+        <Agentation 
+          endpoint="http://localhost:4747"
+          onSessionCreated={(sessionId) => {
+            console.log("Session started:", sessionId);
+          }}
+        />
+      )}
     </Router>
   );
 }

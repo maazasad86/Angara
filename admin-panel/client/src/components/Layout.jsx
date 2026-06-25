@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Sidebar from './Sidebar';
 import { Sun, Moon, Menu } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
@@ -6,8 +6,21 @@ import { useLocation } from 'react-router-dom';
 
 const Layout = ({ children }) => {
   const { theme, toggleTheme } = useTheme();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 1100);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 1100);
   const location = useLocation();
+
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth <= 1100;
+      setIsMobile(mobile);
+      if (mobile && isSidebarOpen) {
+        setIsSidebarOpen(false);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [isSidebarOpen]);
 
   // Map paths to friendly names
   const pageTitles = {
@@ -22,15 +35,15 @@ const Layout = ({ children }) => {
 
   return (
     <div style={styles.container}>
-      {isSidebarOpen && <div className="overlay" onClick={() => setIsSidebarOpen(false)} />}
+      {isSidebarOpen && isMobile && <div className="overlay" onClick={() => setIsSidebarOpen(false)} />}
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
       
-      <main className="layout-main" style={styles.main}>
+      <main className="layout-main" style={{ ...styles.main, marginLeft: isSidebarOpen && !isMobile ? '280px' : '0' }}>
         <header className="responsive-header" style={styles.header}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <button 
-              className="mobile-header-btn" 
-              onClick={() => setIsSidebarOpen(true)}
+              className="sidebar-toggle-btn" 
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
               style={styles.menuBtn}
             >
               <Menu size={24} />
@@ -73,7 +86,7 @@ const styles = {
     marginBottom: '3rem',
   },
   menuBtn: {
-    display: 'none', // Shown via media query
+    display: 'flex',
     backgroundColor: 'var(--glass)',
     border: '1px solid var(--glass-border)',
     padding: '0.6rem',
