@@ -138,30 +138,29 @@ const POS = () => {
                     <div 
                       key={item._id} 
                       className="glass-card" 
-                      style={styles.whatsappDealCard}
+                      style={styles.itemCard}
                       onClick={() => addToCart(item)}
                     >
-                      <div style={styles.whatsappDealHeader}>
-                        {item.name}
-                      </div>
-                      <div style={styles.whatsappDealItems}>
-                        {item.items.map((di, idx) => (
-                          <div key={idx} style={styles.whatsappDealItemRow}>
-                            • {di.quantity}x {di.item?.name || 'Item'}
-                          </div>
-                        ))}
-                      </div>
-                      <div style={styles.whatsappDealImageContainerSmall}>
+                      <div style={styles.itemImageContainer}>
                         {item.image ? (
-                          <img src={item.image} alt={item.name} style={styles.whatsappDealImage} />
+                          <img src={item.image} alt={item.name} style={styles.itemImage} />
                         ) : (
-                          <div style={styles.whatsappDealPlaceholder}>
-                            <Tag size={32} style={{ color: 'var(--primary-yellow)' }} />
+                          <div style={styles.dealPlaceholder}>
+                            <Tag size={40} style={{ color: 'var(--primary-yellow)' }} />
                           </div>
                         )}
+                        <div style={styles.priceBadge}>Rs. {item.price}</div>
                       </div>
-                      <div style={styles.whatsappDealPrice}>
-                        Rs. {item.price}
+                      <div style={styles.dealCardInfo}>
+                        <div style={styles.dealTextContainer}>
+                          <h4 style={styles.itemName} title={item.name}>{item.name}</h4>
+                          <p style={styles.dealItemsText} title={item.items.map(di => `${di.quantity}x ${di.item?.name || 'Item'}`).join(', ')}>
+                            {item.items.map(di => `${di.quantity}x ${di.item?.name || 'Item'}`).join(', ')}
+                          </p>
+                        </div>
+                        <div style={styles.addBtn}>
+                          <Plus size={16} />
+                        </div>
                       </div>
                     </div>
                   );
@@ -401,6 +400,26 @@ const styles = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  dealCardInfo: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: '0.4rem',
+  },
+  dealTextContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+    flex: 1,
+  },
+  dealItemsText: {
+    fontSize: '0.7rem',
+    color: 'var(--text-muted)',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    marginTop: '0.2rem',
   },
   itemName: {
     fontSize: '0.9rem',
