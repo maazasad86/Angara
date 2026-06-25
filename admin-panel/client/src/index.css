@@ -202,3 +202,9 @@ select option {
     padding: 1rem !important;
   }
 }
+
+@keyframes spin {
+  100% {
+    transform: rotate(360deg);
+  }
+}

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Layout from '../components/Layout';
 import ConfirmModal from '../components/ConfirmModal';
+import Spinner from '../components/Spinner';
 import { 
   Search, 
   Plus, 
@@ -180,7 +181,7 @@ const Deals = () => {
     return matchesCategory && matchesSearch;
   });
 
-  if (loading) return <Layout><p>Loading...</p></Layout>;
+  if (loading) return <Layout><Spinner /></Layout>;
 
   return (
     <Layout>

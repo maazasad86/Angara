@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Layout from '../components/Layout';
+import Spinner from '../components/Spinner';
+import ConfirmModal from '../components/ConfirmModal';
 import { Plus, Edit2, Trash2, X, Check } from 'lucide-react';
 
 const CategoryFormModal = ({ onClose, onAdd }) => {
@@ -65,6 +67,7 @@ const Categories = () => {
   const [editName, setEditName] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [deleteId, setDeleteId] = useState(null);
 
   useEffect(() => {
     fetchCategories();
@@ -91,14 +94,18 @@ const Categories = () => {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this category?')) {
-      try {
-        await axios.delete(`http://localhost:5000/api/categories/${id}`);
-        fetchCategories();
-      } catch (err) {
-        alert('Error deleting category');
-      }
+  const confirmDelete = (id) => {
+    setDeleteId(id);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteId) return;
+    try {
+      await axios.delete(`http://localhost:5000/api/categories/${deleteId}`);
+      setDeleteId(null);
+      fetchCategories();
+    } catch (err) {
+      alert('Error deleting category');
     }
   };
 
@@ -135,8 +142,8 @@ const Categories = () => {
 
       <div className="glass-card" style={styles.tableCard}>
         {loading ? (
-          <p style={{ textAlign: 'center', padding: '2rem' }}>Loading categories...</p>
-        ) : (
+          <Spinner />
+        ) : categories.length > 0 ? (
           <table style={styles.table}>
             <thead>
               <tr>
@@ -190,7 +197,7 @@ const Categories = () => {
                           <button onClick={() => handleEdit(cat)} style={styles.actionBtnEdit}>
                             <Edit2 size={18} />
                           </button>
-                          <button onClick={() => handleDelete(cat._id)} style={styles.actionBtnDelete}>
+                          <button onClick={() => confirmDelete(cat._id)} style={styles.actionBtnDelete} className="hover-scale">
                             <Trash2 size={18} />
                           </button>
                         </>
@@ -201,6 +208,10 @@ const Categories = () => {
               ))}
             </tbody>
           </table>
+        ) : (
+          <p style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+            No categories found.
+          </p>
         )}
       </div>
 
@@ -210,6 +221,14 @@ const Categories = () => {
           onAdd={handleAdd}
         />
       )}
+
+      <ConfirmModal 
+        isOpen={!!deleteId}
+        onClose={() => setDeleteId(null)}
+        onConfirm={handleDelete}
+        title="Delete Category"
+        message="Are you sure you want to delete this category? This action cannot be undone."
+      />
     </Layout>
   );
 };

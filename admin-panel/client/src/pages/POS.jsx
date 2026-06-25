@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Layout from '../components/Layout';
+import Spinner from '../components/Spinner';
 import { Search, Plus, Minus, Trash2, Printer, ShoppingCart, Package, Tag } from 'lucide-react';
 
 const POS = () => {
@@ -149,7 +150,7 @@ const POS = () => {
 
           <div className="items-grid" style={styles.itemsGrid}>
             {loading ? (
-              <p>Loading items...</p>
+              <Spinner />
             ) : displayItems.length > 0 ? (
               displayItems.map(item => {
                 const isDeal = !!item.items;

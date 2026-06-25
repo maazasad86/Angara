@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Layout from '../components/Layout';
+import Spinner from '../components/Spinner';
 import { Package, Tags, Gift, Activity } from 'lucide-react';
 
 const Dashboard = () => {
@@ -54,7 +55,7 @@ const Dashboard = () => {
   return (
     <Layout>
       {loading ? (
-        <div style={{ padding: '2rem', color: 'var(--text-muted)' }}>Loading dashboard data...</div>
+        <Spinner />
       ) : (
         <>
           <div style={styles.grid}>

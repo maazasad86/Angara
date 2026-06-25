@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Layout from '../components/Layout';
 import ConfirmModal from '../components/ConfirmModal';
+import Spinner from '../components/Spinner';
 import { Plus, Edit2, Trash2, X, Upload, Package } from 'lucide-react';
 
 const Items = () => {
@@ -169,7 +170,7 @@ const Items = () => {
 
       <div style={styles.grid}>
         {loading ? (
-          <p>Loading items...</p>
+          <Spinner />
         ) : filteredItems.length > 0 ? (
           filteredItems.map((item) => (
             <div key={item._id} className="glass-card" style={styles.itemCard}>
