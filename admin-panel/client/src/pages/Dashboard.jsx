@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Layout from '../components/Layout';
-import { SkeletonCards, SkeletonTable } from '../components/Skeleton';
+import { Spinner } from '../components/ui/spinner-1';
 import { Package, Tags, Gift, Activity } from 'lucide-react';
 
 const Dashboard = () => {
@@ -55,9 +55,8 @@ const Dashboard = () => {
   return (
     <Layout>
       {loading ? (
-        <div style={{ padding: '2rem' }}>
-          <SkeletonCards count={4} />
-          <SkeletonTable rows={4} columns={4} />
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '6rem', width: '100%' }}>
+          <Spinner size={40} color="var(--primary-yellow)" />
         </div>
       ) : (
         <>

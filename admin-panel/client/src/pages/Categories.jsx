@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Layout from '../components/Layout';
-import { SkeletonTable } from '../components/Skeleton';
+import { Spinner } from '../components/ui/spinner-1';
 import ConfirmModal from '../components/ConfirmModal';
 import { Plus, Edit2, Trash2, X, Check } from 'lucide-react';
 
@@ -144,8 +144,8 @@ const Categories = () => {
 
       <div className="glass-card" style={styles.tableCard}>
         {loading ? (
-          <div style={{ padding: '2rem' }}>
-            <SkeletonTable rows={4} columns={3} />
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '4rem', width: '100%' }}>
+            <Spinner size={40} color="var(--primary-yellow)" />
           </div>
         ) : categories.length > 0 ? (
           <table style={styles.table}>

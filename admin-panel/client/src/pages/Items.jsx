@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Layout from '../components/Layout';
 import ConfirmModal from '../components/ConfirmModal';
-import { SkeletonGrid } from '../components/Skeleton';
+import { Spinner } from '../components/ui/spinner-1';
 import { Plus, Edit2, Trash2, X, Upload, Package, MoreVertical } from 'lucide-react';
 
 const Items = () => {
@@ -175,8 +175,8 @@ const Items = () => {
 
       <div style={styles.grid}>
         {loading ? (
-          <div style={{ padding: '2rem' }}>
-            <SkeletonGrid count={8} />
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '4rem', width: '100%' }}>
+            <Spinner size={40} color="var(--primary-yellow)" />
           </div>
         ) : filteredItems.length > 0 ? (
           filteredItems.map((item) => (
