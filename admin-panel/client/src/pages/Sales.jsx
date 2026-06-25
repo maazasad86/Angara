@@ -355,6 +355,7 @@ const Sales = () => {
                     <thead>
                       <tr>
                         <th style={styles.th}>Date & Time</th>
+                        <th style={styles.th}>Type & Customer</th>
                         <th style={styles.th}>Order Items</th>
                         <th style={styles.th}>Total Items</th>
                         <th style={styles.th}>Grand Total</th>
@@ -378,6 +379,29 @@ const Sales = () => {
                             <td style={styles.td}>
                               <div style={{ fontWeight: '700' }}>{formattedDate}</div>
                               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{formattedTime}</div>
+                            </td>
+                            <td style={styles.td}>
+                              <span style={{
+                                padding: '0.2rem 0.5rem',
+                                borderRadius: '4px',
+                                fontSize: '0.75rem',
+                                fontWeight: '700',
+                                backgroundColor: sale.orderType === 'Dine-in' ? 'rgba(74, 222, 128, 0.1)' : 
+                                                sale.orderType === 'Delivery' ? 'rgba(96, 165, 250, 0.1)' : 
+                                                'rgba(250, 204, 21, 0.1)',
+                                color: sale.orderType === 'Dine-in' ? '#4ade80' : 
+                                      sale.orderType === 'Delivery' ? '#60a5fa' : 
+                                      'var(--primary-yellow)',
+                                display: 'inline-block'
+                              }}>
+                                {sale.orderType || 'Takeaway'}
+                              </span>
+                              {sale.orderType === 'Delivery' && (
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>
+                                  {sale.customerName && <div>{sale.customerName}</div>}
+                                  {sale.customerPhone && <div>{sale.customerPhone}</div>}
+                                </div>
+                              )}
                             </td>
                             <td style={styles.td}>
                               <div style={styles.transactionItemsContainer}>

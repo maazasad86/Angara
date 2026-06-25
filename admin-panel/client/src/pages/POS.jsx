@@ -14,6 +14,9 @@ const POS = () => {
   
   // Cart/Bill State
   const [cart, setCart] = useState([]);
+  const [orderType, setOrderType] = useState('Takeaway');
+  const [customerPhone, setCustomerPhone] = useState('');
+  const [customerName, setCustomerName] = useState('');
 
   useEffect(() => {
     fetchData();
@@ -83,11 +86,17 @@ const POS = () => {
 
       await axios.post('http://localhost:5000/api/sales', {
         items: saleItems,
-        totalAmount: total
+        totalAmount: total,
+        orderType,
+        customerName: orderType === 'Delivery' ? customerName : '',
+        customerPhone: orderType === 'Delivery' ? customerPhone : ''
       });
 
       window.print();
       setCart([]);
+      setOrderType('Takeaway');
+      setCustomerName('');
+      setCustomerPhone('');
     } catch (err) {
       console.error('Error recording sale:', err);
       alert('Failed to save sale to records: ' + (err.response?.data?.message || err.message));
@@ -231,6 +240,42 @@ const POS = () => {
             <ShoppingCart size={24} />
           </div>
 
+          <div style={styles.orderTypeSelector}>
+            {['Dine-in', 'Takeaway', 'Delivery'].map(type => (
+              <button
+                key={type}
+                onClick={() => setOrderType(type)}
+                style={{
+                  ...styles.orderTypeBtn,
+                  backgroundColor: orderType === type ? 'var(--primary-yellow)' : 'rgba(255, 255, 255, 0.05)',
+                  color: orderType === type ? '#000' : 'var(--text-main)',
+                  borderColor: orderType === type ? 'var(--primary-yellow)' : 'var(--glass-border)'
+                }}
+              >
+                {type}
+              </button>
+            ))}
+          </div>
+
+          {orderType === 'Delivery' && (
+            <div style={styles.customerInfoContainer}>
+              <input 
+                type="text" 
+                placeholder="Phone (e.g. 0300...)" 
+                value={customerPhone}
+                onChange={(e) => setCustomerPhone(e.target.value)}
+                style={styles.customerInput}
+              />
+              <input 
+                type="text" 
+                placeholder="Customer Name" 
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                style={styles.customerInput}
+              />
+            </div>
+          )}
+
           <div style={styles.cartItemsList}>
             {cart.length > 0 ? (
               cart.map(item => (
@@ -299,6 +344,13 @@ const POS = () => {
         <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
           <h2>ANGARA RESTAURANT</h2>
           <p>Order Summary</p>
+          <p style={{ fontWeight: 'bold', fontSize: '1.2rem', margin: '0.5rem 0', padding: '0.2rem', border: '1px solid #000' }}>{orderType.toUpperCase()}</p>
+          {orderType === 'Delivery' && (
+            <div style={{ fontSize: '0.9rem', marginBottom: '0.5rem' }}>
+              <p>Name: {customerName || 'N/A'}</p>
+              <p>Phone: {customerPhone || 'N/A'}</p>
+            </div>
+          )}
           <hr />
         </div>
         {cart.map(item => (
@@ -480,6 +532,35 @@ const styles = {
     alignItems: 'center',
     marginBottom: '1rem',
     color: 'var(--text-main)',
+  },
+  orderTypeSelector: {
+    display: 'flex',
+    gap: '0.5rem',
+    marginBottom: '1rem',
+  },
+  orderTypeBtn: {
+    flex: 1,
+    padding: '0.5rem',
+    borderRadius: '8px',
+    border: '1px solid',
+    fontSize: '0.8rem',
+    fontWeight: '700',
+    transition: 'all 0.2s',
+  },
+  customerInfoContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.5rem',
+    marginBottom: '1rem',
+  },
+  customerInput: {
+    width: '100%',
+    padding: '0.6rem 0.8rem',
+    borderRadius: '8px',
+    backgroundColor: 'var(--glass)',
+    border: '1px solid var(--glass-border)',
+    color: 'var(--text-main)',
+    fontSize: '0.85rem',
   },
   cartItemsList: {
     display: 'flex',

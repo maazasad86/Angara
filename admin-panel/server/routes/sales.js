@@ -15,7 +15,7 @@ router.get('/', async (req, res) => {
 // Create a sale record
 router.post('/', async (req, res) => {
     try {
-        const { items, totalAmount } = req.body;
+        const { items, totalAmount, orderType, customerName, customerPhone } = req.body;
         
         if (!items || items.length === 0) {
             return res.status(400).json({ message: 'No items in order' });
@@ -23,7 +23,10 @@ router.post('/', async (req, res) => {
 
         const sale = new Sale({
             items,
-            totalAmount: Number(totalAmount)
+            totalAmount: Number(totalAmount),
+            orderType: orderType || 'Takeaway',
+            customerName: customerName || '',
+            customerPhone: customerPhone || ''
         });
 
         const newSale = await sale.save();

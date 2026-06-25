@@ -37,6 +37,19 @@ const SaleSchema = new mongoose.Schema({
     createdAt: {
         type: Date,
         default: Date.now
+    },
+    orderType: {
+        type: String,
+        enum: ['Dine-in', 'Takeaway', 'Delivery'],
+        default: 'Takeaway'
+    },
+    customerName: {
+        type: String,
+        default: ''
+    },
+    customerPhone: {
+        type: String,
+        default: ''
     }
 });
 
