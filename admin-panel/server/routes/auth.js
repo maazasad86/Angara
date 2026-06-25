@@ -2,24 +2,35 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
 const User = require('../models/User');
 
 // Seed Admin User (for demonstration)
 const seedAdmin = async () => {
     const adminEmail = 'admin@gmail.com';
-    const existingAdmin = await User.findOne({ email: adminEmail });
-    if (!existingAdmin) {
-        const hashedPassword = await bcrypt.hash('admin123', 10);
-        const admin = new User({
-            email: adminEmail,
-            password: hashedPassword,
-            role: 'admin'
-        });
-        await admin.save();
-        console.log('Admin user seeded');
+    try {
+        const existingAdmin = await User.findOne({ email: adminEmail });
+        if (!existingAdmin) {
+            const hashedPassword = await bcrypt.hash('admin123', 10);
+            const admin = new User({
+                email: adminEmail,
+                password: hashedPassword,
+                role: 'admin'
+            });
+            await admin.save();
+            console.log('Admin user seeded successfully');
+        }
+    } catch (err) {
+        console.error('Error seeding admin user:', err.message);
     }
 };
-seedAdmin();
+
+// Check if mongoose is connected, otherwise wait for open event
+if (mongoose.connection.readyState === 1) {
+    seedAdmin();
+} else {
+    mongoose.connection.once('open', seedAdmin);
+}
 
 // Login Route
 router.post('/login', async (req, res) => {

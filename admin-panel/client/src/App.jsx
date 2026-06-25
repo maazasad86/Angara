@@ -70,7 +70,7 @@ function App() {
         />
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
       </Routes>
-      {process.env.NODE_ENV === 'development' && <Agentation />}
+      {import.meta.env.MODE === 'development' && <Agentation />}
     </Router>
   );
 }

@@ -10,7 +10,9 @@ import {
   Tag, 
   ArrowLeft, 
   Save,
-  Edit2
+  Edit2,
+  Upload,
+  MoreVertical
 } from 'lucide-react';
 
 const Deals = () => {
@@ -20,6 +22,7 @@ const Deals = () => {
   const [loading, setLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [activeMenuId, setActiveMenuId] = useState(null);
 
   // Search & Filter state for item selection
   const [activeCategory, setActiveCategory] = useState('All');
@@ -29,10 +32,21 @@ const Deals = () => {
   const [dealName, setDealName] = useState('');
   const [dealPrice, setDealPrice] = useState('');
   const [selectedItems, setSelectedItems] = useState([]);
+  const [dealImage, setDealImage] = useState(null);
+  const [dealImagePreview, setDealImagePreview] = useState(null);
 
   useEffect(() => {
     fetchData();
+    
+    const closeMenus = () => setActiveMenuId(null);
+    document.addEventListener('click', closeMenus);
+    return () => document.removeEventListener('click', closeMenus);
   }, []);
+
+  const toggleMenu = (dealId, e) => {
+    e.stopPropagation();
+    setActiveMenuId(prev => (prev === dealId ? null : dealId));
+  };
 
   const fetchData = async () => {
     try {
@@ -51,10 +65,20 @@ const Deals = () => {
     }
   };
 
+  const handleDealImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setDealImage(file);
+      setDealImagePreview(URL.createObjectURL(file));
+    }
+  };
+
   const handleCreateNew = () => {
     setDealName('');
     setDealPrice('');
     setSelectedItems([]);
+    setDealImage(null);
+    setDealImagePreview(null);
     setEditingId(null);
     setIsCreating(true);
   };
@@ -66,18 +90,18 @@ const Deals = () => {
       ...i.item,
       quantity: i.quantity
     })));
+    setDealImage(null);
+    setDealImagePreview(deal.image || null);
     setEditingId(deal._id);
     setIsCreating(true);
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this deal?')) {
-      try {
-        await axios.delete(`http://localhost:5000/api/deals/${id}`);
-        setDeals(deals.filter(d => d._id !== id));
-      } catch (err) {
-        console.error(err);
-      }
+    try {
+      await axios.delete(`http://localhost:5000/api/deals/${id}`);
+      setDeals(deals.filter(d => d._id !== id));
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -111,21 +135,23 @@ const Deals = () => {
       return;
     }
 
-    const dealData = {
-      name: dealName,
-      price: parseFloat(dealPrice),
-      items: selectedItems.map(i => ({
-        item: i._id,
-        quantity: i.quantity
-      }))
-    };
+    const data = new FormData();
+    data.append('name', dealName);
+    data.append('price', dealPrice);
+    data.append('items', JSON.stringify(selectedItems.map(i => ({
+      item: i._id,
+      quantity: i.quantity
+    }))));
+    if (dealImage) {
+      data.append('image', dealImage);
+    }
 
     try {
       if (editingId) {
-        const res = await axios.put(`http://localhost:5000/api/deals/${editingId}`, dealData);
+        const res = await axios.put(`http://localhost:5000/api/deals/${editingId}`, data);
         setDeals(deals.map(d => d._id === editingId ? res.data : d));
       } else {
-        const res = await axios.post('http://localhost:5000/api/deals', dealData);
+        const res = await axios.post('http://localhost:5000/api/deals', data);
         setDeals([...deals, res.data]);
       }
       setIsCreating(false);
@@ -164,29 +190,66 @@ const Deals = () => {
         <div className="items-grid" style={styles.dealsGrid}>
           {deals.length > 0 ? (
             deals.map(deal => (
-              <div key={deal._id} className="glass-card" style={styles.dealCard}>
-                <div style={styles.dealCardContent}>
-                  <div style={styles.dealInfo}>
-                    <h3 style={styles.dealTitle}>{deal.name}</h3>
-                    <div style={styles.dealPrice}>Rs. {deal.price}</div>
-                  </div>
+              <div key={deal._id} className="glass-card" style={styles.menuDealCard}>
+                {/* 3-Dot Actions Menu */}
+                <div style={styles.menuDotContainer}>
+                  <button 
+                    onClick={(e) => toggleMenu(deal._id, e)} 
+                    style={styles.menuDotBtn}
+                    className="hover-scale"
+                  >
+                    <MoreVertical size={18} style={{ color: '#000000' }} />
+                  </button>
                   
-                  <div style={styles.dealItemsPreview}>
-                    {deal.items.map((di, idx) => (
-                      <div key={idx} style={styles.dealItemRow}>
-                        <span style={{ color: 'var(--primary-yellow)', fontWeight: '700' }}>{di.quantity}x</span>
-                        <span style={{ color: 'var(--text-main)', fontSize: '0.85rem' }}>{di.item?.name || 'Deleted Item'}</span>
-                      </div>
-                    ))}
-                  </div>
+                  {activeMenuId === deal._id && (
+                    <div style={styles.dropdownMenu}>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); handleEdit(deal); }} 
+                        style={styles.dropdownItem}
+                      >
+                        <Edit2 size={13} style={{ marginRight: '0.4rem' }} /> Edit
+                      </button>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); handleDelete(deal._id); }} 
+                        style={{ ...styles.dropdownItem, borderBottom: 'none', color: 'var(--accent-red)' }}
+                      >
+                        <Trash2 size={13} style={{ marginRight: '0.4rem' }} /> Delete
+                      </button>
+                    </div>
+                  )}
+                </div>
 
-                  <div style={styles.cardActions}>
-                    <button onClick={() => handleEdit(deal)} style={styles.iconBtn} className="hover-scale">
-                      <Edit2 size={18} />
-                    </button>
-                    <button onClick={() => handleDelete(deal._id)} style={{ ...styles.iconBtn, color: 'var(--accent-red)' }} className="hover-scale">
-                      <Trash2 size={18} />
-                    </button>
+                {/* Header: Deal Name inside white paintbrush-like banner */}
+                <div style={styles.menuDealHeaderContainer}>
+                  <div style={styles.menuDealHeaderPatch}>
+                    {deal.name}
+                  </div>
+                </div>
+
+                {/* Content Area: Items list */}
+                <div style={styles.menuDealItemsArea}>
+                  {deal.items.map((di, idx) => (
+                    <div key={idx} style={styles.menuDealItemRow} title={`${di.quantity}x ${di.item?.name || 'Deleted Item'}`}>
+                      • {di.quantity}x {di.item?.name || 'Deleted Item'}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Image Container */}
+                <div style={styles.menuDealImageContainer}>
+                  {deal.image ? (
+                    <img src={deal.image} alt={deal.name} style={styles.menuDealImage} />
+                  ) : (
+                    <div style={styles.menuDealPlaceholder}>
+                      <Tag size={36} style={{ color: '#ffffff', opacity: 0.8 }} />
+                    </div>
+                  )}
+                </div>
+
+                {/* Price: Dark Red banner patch */}
+                <div style={styles.menuDealPriceContainer}>
+                  <div style={styles.menuDealPricePatch}>
+                    Rs {deal.price}
                   </div>
                 </div>
               </div>
@@ -272,37 +335,67 @@ const Deals = () => {
               <Tag size={20} style={{ opacity: 0.5 }} />
             </div>
 
-            <div style={styles.inputGroup}>
-              <label style={styles.label}>Deal Name / Number</label>
-              <input 
-                type="text" 
-                placeholder="e.g. Super Saver Deal 1" 
-                style={styles.majorInput}
-                value={dealName}
-                onChange={(e) => setDealName(e.target.value)}
-              />
+            {/* Name and Price Row */}
+            <div style={{ display: 'flex', gap: '1rem', width: '100%' }}>
+              <div style={{ ...styles.inputGroup, flex: 2 }}>
+                <label style={styles.label}>Deal Name / Number</label>
+                <input 
+                  type="text" 
+                  placeholder="e.g. Super Saver Deal 1" 
+                  style={styles.majorInput}
+                  value={dealName}
+                  onChange={(e) => setDealName(e.target.value)}
+                />
+              </div>
+              <div style={{ ...styles.inputGroup, flex: 1 }}>
+                <label style={styles.label}>Price (Rs.)</label>
+                <input 
+                  type="number" 
+                  placeholder="0.00" 
+                  style={styles.majorInput}
+                  value={dealPrice}
+                  onChange={(e) => setDealPrice(e.target.value)}
+                />
+              </div>
             </div>
 
+            {/* Image upload row */}
             <div style={styles.inputGroup}>
-              <label style={styles.label}>Deal Price (Rs.)</label>
-              <input 
-                type="number" 
-                placeholder="0.00" 
-                style={styles.majorInput}
-                value={dealPrice}
-                onChange={(e) => setDealPrice(e.target.value)}
-              />
+              <label style={styles.label}>Deal Image</label>
+              <div style={styles.dealUploadArea} onClick={() => document.getElementById('dealImageInput').click()}>
+                {dealImagePreview ? (
+                  <img src={dealImagePreview} alt="Deal Preview" style={styles.dealPreviewImg} />
+                ) : (
+                  <div style={styles.dealUploadPrompt}>
+                    <Upload size={20} />
+                    <span>Upload Deal Image</span>
+                  </div>
+                )}
+                <input 
+                  id="dealImageInput" 
+                  type="file" 
+                  onChange={handleDealImageChange} 
+                  hidden 
+                  accept="image/*"
+                />
+              </div>
             </div>
 
-            <div style={styles.selectedItemsList}>
+            {/* Selected Items section */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               <label style={styles.label}>Selected Items ({selectedItems.length})</label>
-              <div style={styles.itemsScroll}>
+              <div style={styles.selectedItemsScroll}>
                 {selectedItems.length > 0 ? (
                   selectedItems.map(item => (
                     <div key={item._id} style={styles.selectedItem}>
-                      <div style={styles.selInfo}>
-                        <p style={styles.selName}>{item.name}</p>
-                        <p style={styles.selMeta}>Rs. {item.price}</p>
+                      <div style={styles.selectedItemLeft}>
+                        {item.image && (
+                          <img src={item.image} alt={item.name} style={styles.selectedItemThumb} />
+                        )}
+                        <div style={styles.selInfo}>
+                          <p style={styles.selName}>{item.name}</p>
+                          <p style={styles.selMeta}>Rs. {item.price}</p>
+                        </div>
                       </div>
                       <div style={styles.qtyRow}>
                         <button onClick={() => updateItemQty(item._id, -1)} style={styles.miniQtyBtn}><Minus size={12} /></button>
@@ -321,14 +414,17 @@ const Deals = () => {
               </div>
             </div>
 
-            <button 
-              onClick={handleSaveDeal} 
-              className="btn-primary" 
-              style={styles.saveBtn}
-              disabled={!dealName || !dealPrice || selectedItems.length === 0}
-            >
-              <Save size={20} /> {editingId ? 'Update Deal' : 'Save Deal'}
-            </button>
+            {/* Bottom Centered Button */}
+            <div style={styles.saveBtnContainer}>
+              <button 
+                onClick={handleSaveDeal} 
+                className="btn-primary" 
+                style={styles.saveBtnWide}
+                disabled={!dealName || !dealPrice || selectedItems.length === 0}
+              >
+                <Save size={20} /> {editingId ? 'Update Deal' : 'Save Deal'}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -355,14 +451,10 @@ const styles = {
   },
   dealsGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-    gap: '1.5rem',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+    gap: '1.25rem',
   },
-  dealCard: {
-    padding: '1.5rem',
-    height: 'fit-content',
-    background: 'var(--bg-card)',
-  },
+
   dealCardContent: {
     display: 'flex',
     flexDirection: 'column',
@@ -522,11 +614,31 @@ const styles = {
 
   configSide: {
     width: '380px',
-    padding: '1.5rem',
+    padding: '1.25rem',
     display: 'flex',
     flexDirection: 'column',
-    gap: '1.25rem',
+    gap: '1rem',
     background: 'var(--bg-card)',
+    height: '100%',
+    overflowY: 'auto',
+    boxSizing: 'border-box',
+  },
+  selectedItemsScroll: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.6rem',
+    boxSizing: 'border-box',
+  },
+  saveBtnContainer: {
+    display: 'flex',
+    justifyContent: 'center',
+    marginTop: '0.5rem',
+  },
+  saveBtnWide: {
+    width: '100%',
+    padding: '0.8rem 2rem',
+    gap: '0.75rem',
+    fontSize: '1rem',
   },
   configHeader: {
     display: 'flex',
@@ -556,6 +668,7 @@ const styles = {
     color: 'var(--text-main)',
     fontSize: '1rem',
     fontWeight: '600',
+    boxSizing: 'border-box',
   },
   selectedItemsList: {
     flex: 1,
@@ -580,6 +693,7 @@ const styles = {
     backgroundColor: 'rgba(255,255,255,0.02)',
     borderRadius: '12px',
     border: '1px solid var(--glass-border)',
+    boxSizing: 'border-box',
   },
   selInfo: {
     flex: 1,
@@ -639,6 +753,185 @@ const styles = {
     padding: '6rem',
     color: 'var(--text-muted)',
     textAlign: 'center',
+  },
+  menuDealCard: {
+    background: 'linear-gradient(to bottom, #f59e0b, #d97706)',
+    borderRadius: '16px',
+    border: '3px solid #b45309',
+    padding: '1.5rem 1rem 1rem 1rem',
+    display: 'flex',
+    flexDirection: 'column',
+    position: 'relative',
+    height: '100%',
+    boxShadow: '0 10px 25px rgba(0,0,0,0.3)',
+    boxSizing: 'border-box',
+    overflow: 'visible',
+  },
+  menuDotContainer: {
+    position: 'absolute',
+    top: '0.75rem',
+    right: '0.75rem',
+    zIndex: 10,
+  },
+  menuDotBtn: {
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    border: 'none',
+    borderRadius: '50%',
+    width: '32px',
+    height: '32px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+  },
+  dropdownMenu: {
+    position: 'absolute',
+    top: '2.2rem',
+    right: '0',
+    backgroundColor: 'var(--bg-card)',
+    border: '1px solid var(--glass-border)',
+    borderRadius: '8px',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
+    display: 'flex',
+    flexDirection: 'column',
+    width: '110px',
+    zIndex: 20,
+    overflow: 'hidden',
+  },
+  dropdownItem: {
+    padding: '0.6rem 0.8rem',
+    display: 'flex',
+    alignItems: 'center',
+    color: 'var(--text-main)',
+    fontSize: '0.8rem',
+    fontWeight: '600',
+    borderBottom: '1px solid var(--glass-border)',
+    background: 'none',
+    width: '100%',
+    textAlign: 'left',
+    cursor: 'pointer',
+  },
+  menuDealHeaderContainer: {
+    display: 'flex',
+    justifyContent: 'center',
+    marginBottom: '1rem',
+    width: '100%',
+  },
+  menuDealHeaderPatch: {
+    backgroundColor: '#ffffff',
+    color: '#000000',
+    padding: '0.4rem 1.25rem',
+    fontWeight: '900',
+    fontSize: '1.2rem',
+    fontFamily: 'Impact, Arial Black, sans-serif',
+    letterSpacing: '1px',
+    textTransform: 'uppercase',
+    borderRadius: '4px',
+    transform: 'rotate(-1.5deg)',
+    boxShadow: '0 4px 6px rgba(0,0,0,0.15)',
+    textAlign: 'center',
+    width: 'fit-content',
+    maxWidth: '100%',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  },
+  menuDealItemsArea: {
+    color: '#1e293b',
+    fontWeight: '800',
+    fontSize: '0.85rem',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.3rem',
+    textAlign: 'left',
+    padding: '0 0.5rem',
+    marginBottom: '1rem',
+    flexGrow: 1,
+  },
+  menuDealItemRow: {
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  },
+  menuDealImageContainer: {
+    height: '130px',
+    width: '100%',
+    borderRadius: '12px',
+    overflow: 'hidden',
+    boxShadow: '0 4px 10px rgba(0,0,0,0.2)',
+    border: '2px solid rgba(255,255,255,0.2)',
+    marginBottom: '1rem',
+    backgroundColor: 'rgba(0,0,0,0.1)',
+  },
+  menuDealImage: {
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover',
+  },
+  menuDealPlaceholder: {
+    width: '100%',
+    height: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: 'radial-gradient(circle, #78350f 0%, #451a03 100%)',
+  },
+  menuDealPriceContainer: {
+    display: 'flex',
+    justifyContent: 'center',
+    width: '100%',
+    marginTop: 'auto',
+  },
+  menuDealPricePatch: {
+    backgroundColor: '#7f1d1d',
+    color: '#fef08a',
+    padding: '0.4rem 1.5rem',
+    fontWeight: '900',
+    fontSize: '1.25rem',
+    fontFamily: 'Impact, Arial Black, sans-serif',
+    borderRadius: '6px',
+    boxShadow: '0 4px 6px rgba(0,0,0,0.2)',
+    textAlign: 'center',
+    width: 'fit-content',
+  },
+  dealUploadArea: {
+    border: '2px dashed var(--glass-border)',
+    borderRadius: '10px',
+    height: '85px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+    overflow: 'hidden',
+    position: 'relative',
+    backgroundColor: 'var(--glass)',
+    transition: 'all 0.3s ease',
+    boxSizing: 'border-box',
+  },
+  dealPreviewImg: {
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover',
+  },
+  dealUploadPrompt: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '0.4rem',
+    color: 'var(--text-muted)',
+    fontSize: '0.85rem',
+  },
+  selectedItemLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.75rem',
+  },
+  selectedItemThumb: {
+    width: '40px',
+    height: '40px',
+    borderRadius: '6px',
+    objectFit: 'cover',
+    border: '1px solid var(--glass-border)',
   }
 };
 

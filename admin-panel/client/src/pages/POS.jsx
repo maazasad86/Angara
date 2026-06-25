@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Layout from '../components/Layout';
-import { Search, Plus, Minus, Trash2, Printer, ShoppingCart, Package } from 'lucide-react';
+import { Search, Plus, Minus, Trash2, Printer, ShoppingCart, Package, Tag } from 'lucide-react';
 
 const POS = () => {
   const [items, setItems] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [deals, setDeals] = useState([]);
   const [activeCategory, setActiveCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
@@ -19,12 +20,14 @@ const POS = () => {
 
   const fetchData = async () => {
     try {
-      const [itemsRes, catsRes] = await Promise.all([
+      const [itemsRes, catsRes, dealsRes] = await Promise.all([
         axios.get('http://localhost:5000/api/items'),
-        axios.get('http://localhost:5000/api/categories')
+        axios.get('http://localhost:5000/api/categories'),
+        axios.get('http://localhost:5000/api/deals')
       ]);
       setItems(itemsRes.data);
       setCategories(catsRes.data);
+      setDeals(dealsRes.data);
       setLoading(false);
     } catch (err) {
       console.error(err);
@@ -58,11 +61,13 @@ const POS = () => {
 
   const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
-  const filteredItems = items.filter(item => {
-    const matchesCategory = activeCategory === 'All' || item.category?.name === activeCategory;
-    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
-  });
+  const displayItems = activeCategory === 'Deals'
+    ? deals.filter(deal => deal.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    : items.filter(item => {
+        const matchesCategory = activeCategory === 'All' || item.category?.name === activeCategory;
+        const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
+        return matchesCategory && matchesSearch;
+      });
 
   const handlePrint = () => {
     window.print();
@@ -109,32 +114,85 @@ const POS = () => {
                   {cat.name}
                 </button>
               ))}
+              <button 
+                onClick={() => setActiveCategory('Deals')}
+                style={{
+                  ...styles.catTab,
+                  backgroundColor: activeCategory === 'Deals' ? 'var(--primary-yellow)' : 'var(--glass)',
+                  color: activeCategory === 'Deals' ? '#000' : 'var(--text-main)',
+                }}
+              >
+                Deals
+              </button>
             </div>
           </div>
 
           <div className="items-grid" style={styles.itemsGrid}>
             {loading ? (
               <p>Loading items...</p>
-            ) : filteredItems.length > 0 ? (
-              filteredItems.map(item => (
-                <div 
-                  key={item._id} 
-                  className="glass-card" 
-                  style={styles.itemCard}
-                  onClick={() => addToCart(item)}
-                >
-                  <div style={styles.itemImageContainer}>
-                    <img src={item.image} alt={item.name} style={styles.itemImage} />
-                    <div style={styles.priceBadge}>Rs. {item.price}</div>
-                  </div>
-                  <div style={styles.cardInfo}>
-                    <h4 style={styles.itemName}>{item.name}</h4>
-                    <div style={styles.addBtn}>
-                      <Plus size={16} />
+            ) : displayItems.length > 0 ? (
+              displayItems.map(item => {
+                const isDeal = !!item.items;
+                if (isDeal) {
+                  return (
+                    <div 
+                      key={item._id} 
+                      className="glass-card" 
+                      style={styles.whatsappDealCard}
+                      onClick={() => addToCart(item)}
+                    >
+                      <div style={styles.whatsappDealHeader}>
+                        {item.name}
+                      </div>
+                      <div style={styles.whatsappDealItems}>
+                        {item.items.map((di, idx) => (
+                          <div key={idx} style={styles.whatsappDealItemRow}>
+                            • {di.quantity}x {di.item?.name || 'Item'}
+                          </div>
+                        ))}
+                      </div>
+                      <div style={styles.whatsappDealImageContainerSmall}>
+                        {item.image ? (
+                          <img src={item.image} alt={item.name} style={styles.whatsappDealImage} />
+                        ) : (
+                          <div style={styles.whatsappDealPlaceholder}>
+                            <Tag size={32} style={{ color: 'var(--primary-yellow)' }} />
+                          </div>
+                        )}
+                      </div>
+                      <div style={styles.whatsappDealPrice}>
+                        Rs. {item.price}
+                      </div>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div 
+                    key={item._id} 
+                    className="glass-card" 
+                    style={styles.itemCard}
+                    onClick={() => addToCart(item)}
+                  >
+                    <div style={styles.itemImageContainer}>
+                      {item.image ? (
+                        <img src={item.image} alt={item.name} style={styles.itemImage} />
+                      ) : (
+                        <div style={styles.dealPlaceholder}>
+                          <Tag size={40} style={{ color: 'var(--primary-yellow)' }} />
+                        </div>
+                      )}
+                      <div style={styles.priceBadge}>Rs. {item.price}</div>
+                    </div>
+                    <div style={styles.cardInfo}>
+                      <h4 style={styles.itemName}>{item.name}</h4>
+                      <div style={styles.addBtn}>
+                        <Plus size={16} />
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             ) : (
               <div style={styles.emptyState}>
                 <Package size={48} />
@@ -158,6 +216,17 @@ const POS = () => {
                   <div style={styles.cartItemInfo}>
                     <p style={styles.cartItemName}>{item.name}</p>
                     <p style={styles.cartItemPrice}>Rs. {item.price} x {item.quantity}</p>
+                    {/* Nested Deal Items in Card Badge Style */}
+                    {item.items && item.items.length > 0 && (
+                      <div style={styles.dealItemsContainer}>
+                        {item.items.map((di, idx) => (
+                          <div key={idx} style={styles.dealItemCard}>
+                            <span style={styles.dealItemQty}>{di.quantity}x</span>
+                            <span style={styles.dealItemName}>{di.item?.name || 'Item'}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <div style={styles.qtyControls}>
                     <button onClick={() => updateQuantity(item._id, -1)} style={styles.qtyBtn}><Minus size={14} /></button>
@@ -211,9 +280,21 @@ const POS = () => {
           <hr />
         </div>
         {cart.map(item => (
-          <div key={item._id} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-            <span>{item.name} x {item.quantity}</span>
-            <span>Rs. {(item.price * item.quantity).toFixed(2)}</span>
+          <div key={item._id} style={{ marginBottom: '0.75rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ fontWeight: 'bold' }}>{item.name} x {item.quantity}</span>
+              <span>Rs. {(item.price * item.quantity).toFixed(2)}</span>
+            </div>
+            {/* If it's a Deal, list sub-items on receipt */}
+            {item.items && item.items.length > 0 && (
+              <div style={{ paddingLeft: '1rem', fontSize: '0.85rem', color: '#555', marginTop: '0.15rem' }}>
+                {item.items.map((di, idx) => (
+                  <div key={idx}>
+                    - {di.quantity}x {di.item?.name || 'Item'}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         ))}
         <hr />
@@ -346,6 +427,9 @@ const styles = {
     flexDirection: 'column',
     padding: '1.5rem',
     backgroundColor: 'var(--bg-card)',
+    height: '100%',
+    overflowY: 'auto',
+    boxSizing: 'border-box',
   },
   billHeader: {
     display: 'flex',
@@ -355,13 +439,11 @@ const styles = {
     color: 'var(--text-main)',
   },
   cartItemsList: {
-    flex: 1,
-    overflowY: 'auto',
     display: 'flex',
     flexDirection: 'column',
     gap: '0.75rem',
     marginBottom: '1rem',
-    paddingRight: '0.4rem',
+    boxSizing: 'border-box',
   },
   cartItem: {
     display: 'flex',
@@ -441,13 +523,13 @@ const styles = {
     fontSize: '0.95rem',
   },
   emptyCart: {
-    flex: 1,
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
     color: 'var(--text-muted)',
     opacity: 0.5,
+    padding: '2rem 0',
   },
   emptyState: {
     gridColumn: '1 / -1',
@@ -459,6 +541,104 @@ const styles = {
     color: 'var(--text-muted)',
     gap: '1rem',
     opacity: 0.5,
+  },
+  dealPlaceholder: {
+    width: '100%',
+    height: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(250, 204, 21, 0.05)',
+  },
+  dealItemsContainer: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '0.4rem',
+    marginTop: '0.6rem',
+  },
+  dealItemCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    border: '1px solid var(--glass-border)',
+    borderRadius: '8px',
+    padding: '0.3rem 0.6rem',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.4rem',
+    fontSize: '0.75rem',
+  },
+  dealItemQty: {
+    color: 'var(--primary-yellow)',
+    fontWeight: '700',
+  },
+  dealItemName: {
+    color: 'var(--text-main)',
+  },
+  whatsappDealCard: {
+    backgroundColor: 'var(--bg-card)',
+    border: '1px solid var(--glass-border)',
+    borderRadius: '16px',
+    overflow: 'hidden',
+    display: 'flex',
+    flexDirection: 'column',
+    position: 'relative',
+    transition: 'all 0.3s ease',
+    boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.1)',
+  },
+  whatsappDealHeader: {
+    backgroundColor: '#1c1917',
+    color: '#ffffff',
+    textAlign: 'center',
+    padding: '0.6rem',
+    fontWeight: '800',
+    fontSize: '0.95rem',
+    letterSpacing: '1px',
+    textTransform: 'uppercase',
+    borderBottom: '2px solid var(--glass-border)',
+  },
+  whatsappDealItems: {
+    padding: '0.8rem 1rem',
+    backgroundColor: 'rgba(250, 204, 21, 0.03)',
+    flexGrow: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.3rem',
+    minHeight: '80px',
+  },
+  whatsappDealItemRow: {
+    fontSize: '0.8rem',
+    color: 'var(--text-main)',
+    fontWeight: '600',
+    textAlign: 'left',
+  },
+  whatsappDealImageContainerSmall: {
+    height: '90px',
+    width: '100%',
+    position: 'relative',
+    backgroundColor: 'rgba(255,255,255,0.02)',
+    borderTop: '1px solid var(--glass-border)',
+    borderBottom: '1px solid var(--glass-border)',
+  },
+  whatsappDealImage: {
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover',
+  },
+  whatsappDealPlaceholder: {
+    width: '100%',
+    height: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(250, 204, 21, 0.05)',
+  },
+  whatsappDealPrice: {
+    backgroundColor: '#ef4444',
+    color: '#ffffff',
+    textAlign: 'center',
+    padding: '0.6rem',
+    fontWeight: '800',
+    fontSize: '0.95rem',
+    letterSpacing: '0.5px',
   },
   printOnly: {
     display: 'none',

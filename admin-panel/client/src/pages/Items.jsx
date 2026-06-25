@@ -94,13 +94,14 @@ const Items = () => {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('Delete this item?')) {
-      try {
-        await axios.delete(`http://localhost:5000/api/items/${id}`);
-        fetchData();
-      } catch (err) {
-        alert('Error deleting item');
-      }
+    console.log('handleDelete clicked for ID:', id);
+    try {
+      const response = await axios.delete(`http://localhost:5000/api/items/${id}`);
+      console.log('Delete response from server:', response.data);
+      fetchData();
+    } catch (err) {
+      console.error('DELETE ITEM CLIENT ERROR:', err);
+      alert(err.response?.data?.message || 'Error deleting item');
     }
   };
 
@@ -354,8 +355,22 @@ const styles = {
     borderTop: '1px solid var(--glass-border)',
     paddingTop: '1rem',
   },
-  iconBtnEdit: { color: 'var(--text-muted)' },
-  iconBtnDelete: { color: 'var(--accent-red)' },
+  iconBtnEdit: { 
+    color: 'var(--text-muted)',
+    padding: '0.4rem',
+    cursor: 'pointer',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconBtnDelete: { 
+    color: 'var(--accent-red)',
+    padding: '0.4rem',
+    cursor: 'pointer',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   noItems: {
     gridColumn: '1 / -1',
     display: 'flex',

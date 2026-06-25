@@ -74,9 +74,12 @@ router.put('/:id', upload.single('image'), async (req, res) => {
 // Delete an item
 router.delete('/:id', async (req, res) => {
     try {
-        await Item.findByIdAndDelete(req.params.id);
+        console.log(`DELETE /api/items/${req.params.id} request received`);
+        const deleted = await Item.findByIdAndDelete(req.params.id);
+        console.log('Deleted item document:', deleted);
         res.json({ message: 'Item deleted' });
     } catch (err) {
+        console.error('DELETE ITEM ROUTE ERROR:', err);
         res.status(500).json({ message: err.message });
     }
 });
