@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Layout from '../components/Layout';
+import ConfirmModal from '../components/ConfirmModal';
 import { 
   Search, 
   Plus, 
@@ -12,7 +13,8 @@ import {
   Save,
   Edit2,
   Upload,
-  MoreVertical
+  MoreVertical,
+  X
 } from 'lucide-react';
 
 const Deals = () => {
@@ -34,6 +36,9 @@ const Deals = () => {
   const [selectedItems, setSelectedItems] = useState([]);
   const [dealImage, setDealImage] = useState(null);
   const [dealImagePreview, setDealImagePreview] = useState(null);
+
+  // Confirm Modal state
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, dealId: null });
 
   useEffect(() => {
     fetchData();
@@ -96,10 +101,18 @@ const Deals = () => {
     setIsCreating(true);
   };
 
-  const handleDelete = async (id) => {
+  const confirmDelete = (id) => {
+    setConfirmModal({ isOpen: true, dealId: id });
+    setActiveMenuId(null);
+  };
+
+  const handleDelete = async () => {
+    const id = confirmModal.dealId;
+    if (!id) return;
     try {
       await axios.delete(`http://localhost:5000/api/deals/${id}`);
       setDeals(deals.filter(d => d._id !== id));
+      setConfirmModal({ isOpen: false, dealId: null });
     } catch (err) {
       console.error(err);
     }
@@ -198,7 +211,7 @@ const Deals = () => {
                     style={styles.menuDotBtn}
                     className="hover-scale"
                   >
-                    <MoreVertical size={18} style={{ color: '#000000' }} />
+                    <MoreVertical size={18} style={{ color: 'var(--text-main)' }} />
                   </button>
                   
                   {activeMenuId === deal._id && (
@@ -210,7 +223,7 @@ const Deals = () => {
                         <Edit2 size={13} style={{ marginRight: '0.4rem' }} /> Edit
                       </button>
                       <button 
-                        onClick={(e) => { e.stopPropagation(); handleDelete(deal._id); }} 
+                        onClick={(e) => { e.stopPropagation(); confirmDelete(deal._id); }} 
                         style={{ ...styles.dropdownItem, borderBottom: 'none', color: 'var(--accent-red)' }}
                       >
                         <Trash2 size={13} style={{ marginRight: '0.4rem' }} /> Delete
@@ -241,7 +254,7 @@ const Deals = () => {
                     <img src={deal.image} alt={deal.name} style={styles.menuDealImage} />
                   ) : (
                     <div style={styles.menuDealPlaceholder}>
-                      <Tag size={36} style={{ color: '#ffffff', opacity: 0.8 }} />
+                      <Tag size={36} style={{ color: 'var(--primary-yellow)', opacity: 0.8 }} />
                     </div>
                   )}
                 </div>
@@ -267,10 +280,6 @@ const Deals = () => {
           {/* Item Selector Side */}
           <div style={styles.itemsSide}>
             <div style={styles.selectorHeader}>
-              <button onClick={() => setIsCreating(false)} style={styles.backBtn}>
-                <ArrowLeft size={20} /> Back to List
-              </button>
-              
               <div style={styles.searchBox}>
                 <Search size={18} style={styles.searchIcon} />
                 <input 
@@ -314,15 +323,25 @@ const Deals = () => {
                 <div 
                   key={item._id} 
                   className="glass-card" 
-                  style={styles.smallItemCard}
+                  style={styles.itemCard}
                   onClick={() => addToDeal(item)}
                 >
-                  <img src={item.image} alt={item.name} style={styles.smallItemImage} />
-                  <div style={styles.smallItemInfo}>
-                    <p style={styles.smallItemName}>{item.name}</p>
-                    <p style={styles.smallItemPrice}>Rs. {item.price}</p>
+                  <div style={styles.itemImageContainer}>
+                    {item.image ? (
+                      <img src={item.image} alt={item.name} style={styles.itemImage} />
+                    ) : (
+                      <div style={styles.dealPlaceholder}>
+                        <Tag size={40} style={{ color: 'var(--primary-yellow)' }} />
+                      </div>
+                    )}
+                    <div style={styles.priceBadge}>Rs. {item.price}</div>
                   </div>
-                  <div style={styles.addIconMini}><Plus size={14} /></div>
+                  <div style={styles.cardInfo}>
+                    <h4 style={styles.itemName}>{item.name}</h4>
+                    <div style={styles.addBtn}>
+                      <Plus size={16} />
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
@@ -362,9 +381,25 @@ const Deals = () => {
             {/* Image upload row */}
             <div style={styles.inputGroup}>
               <label style={styles.label}>Deal Image</label>
-              <div style={styles.dealUploadArea} onClick={() => document.getElementById('dealImageInput').click()}>
+              <div style={styles.dealUploadArea} onClick={(e) => {
+                if(e.target.closest('button')) return;
+                document.getElementById('dealImageInput').click();
+              }}>
                 {dealImagePreview ? (
-                  <img src={dealImagePreview} alt="Deal Preview" style={styles.dealPreviewImg} />
+                  <>
+                    <img src={dealImagePreview} alt="Deal Preview" style={styles.dealPreviewImg} />
+                    <button 
+                      type="button"
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        setDealImage(null); 
+                        setDealImagePreview(null); 
+                      }} 
+                      style={styles.removeImageBtn}
+                    >
+                      <X size={14} />
+                    </button>
+                  </>
                 ) : (
                   <div style={styles.dealUploadPrompt}>
                     <Upload size={20} />
@@ -382,8 +417,15 @@ const Deals = () => {
             </div>
 
             {/* Selected Items section */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              <label style={styles.label}>Selected Items ({selectedItems.length})</label>
+            <div style={styles.selectedItemsSection}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <label style={styles.label}>Selected Items ({selectedItems.length})</label>
+                {selectedItems.length > 0 && (
+                  <span style={{ fontSize: '0.85rem', color: 'var(--primary-yellow)', fontWeight: '800' }}>
+                    Total: Rs. {selectedItems.reduce((acc, item) => acc + (item.price * item.quantity), 0)}
+                  </span>
+                )}
+              </div>
               <div style={styles.selectedItemsScroll}>
                 {selectedItems.length > 0 ? (
                   selectedItems.map(item => (
@@ -394,7 +436,9 @@ const Deals = () => {
                         )}
                         <div style={styles.selInfo}>
                           <p style={styles.selName}>{item.name}</p>
-                          <p style={styles.selMeta}>Rs. {item.price}</p>
+                          <p style={styles.selMeta}>
+                            Rs. {item.price} &times; {item.quantity} = <span style={{color:'var(--primary-yellow)', fontWeight:'700'}}>Rs. {item.price * item.quantity}</span>
+                          </p>
                         </div>
                       </div>
                       <div style={styles.qtyRow}>
@@ -414,8 +458,14 @@ const Deals = () => {
               </div>
             </div>
 
-            {/* Bottom Centered Button */}
             <div style={styles.saveBtnContainer}>
+              <button 
+                onClick={() => setIsCreating(false)} 
+                className="btn-secondary" 
+                style={{...styles.saveBtnWide, borderRadius: '12px', backgroundColor: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-main)'}}
+              >
+                Cancel
+              </button>
               <button 
                 onClick={handleSaveDeal} 
                 className="btn-primary" 
@@ -428,6 +478,14 @@ const Deals = () => {
           </div>
         </div>
       )}
+
+      <ConfirmModal 
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ isOpen: false, dealId: null })}
+        onConfirm={handleDelete}
+        title="Delete Deal"
+        message="Are you sure you want to delete this deal? This action cannot be undone."
+      />
     </Layout>
   );
 };
@@ -451,7 +509,7 @@ const styles = {
   },
   dealsGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+    gridTemplateColumns: 'repeat(4, 1fr)',
     gap: '1.25rem',
   },
 
@@ -514,19 +572,12 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     gap: '1.5rem',
+    overflow: 'hidden',
   },
   selectorHeader: {
     display: 'flex',
     flexDirection: 'column',
     gap: '1rem',
-  },
-  backBtn: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-    color: 'var(--text-muted)',
-    fontSize: '0.9rem',
-    width: 'fit-content',
   },
   searchBox: {
     position: 'relative',
@@ -563,50 +614,60 @@ const styles = {
     flex: 1,
     overflowY: 'auto',
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+    gridTemplateColumns: 'repeat(3, 1fr)',
     gap: '1rem',
     paddingRight: '0.5rem',
   },
-  smallItemCard: {
-    padding: '0.6rem',
+  itemCard: {
+    padding: '0.75rem',
     cursor: 'pointer',
-    position: 'relative',
+    transition: 'opacity 0.2s ease, background-color 0.2s ease',
     display: 'flex',
     flexDirection: 'column',
-    gap: '0.5rem',
-    transition: 'all 0.2s ease',
+    gap: '0.75rem',
+    height: 'fit-content',
   },
-  smallItemImage: {
+  itemImageContainer: {
+    position: 'relative',
+    aspectRatio: '4/3',
+    borderRadius: '8px',
+    overflow: 'hidden',
+  },
+  itemImage: {
     width: '100%',
-    height: '80px',
+    height: '100%',
     objectFit: 'cover',
+  },
+  priceBadge: {
+    position: 'absolute',
+    top: '0.5rem',
+    right: '0.5rem',
+    padding: '0.25rem 0.5rem',
+    backgroundColor: 'var(--primary-yellow)',
+    color: '#000',
     borderRadius: '6px',
+    fontSize: '0.75rem',
+    fontWeight: '800',
   },
-  smallItemInfo: {
-    padding: '0 0.2rem',
+  cardInfo: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  smallItemName: {
-    fontSize: '0.8rem',
+  itemName: {
+    fontSize: '0.9rem',
     fontWeight: '700',
     color: 'var(--text-main)',
     whiteSpace: 'nowrap',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
   },
-  smallItemPrice: {
-    fontSize: '0.7rem',
-    color: 'var(--primary-yellow)',
-    fontWeight: '600',
-  },
-  addIconMini: {
-    position: 'absolute',
-    bottom: '0.6rem',
-    right: '0.6rem',
-    width: '20px',
-    height: '20px',
+  addBtn: {
+    width: '28px',
+    height: '28px',
+    borderRadius: '8px',
     backgroundColor: 'rgba(250, 204, 21, 0.1)',
     color: 'var(--primary-yellow)',
-    borderRadius: '4px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -614,38 +675,48 @@ const styles = {
 
   configSide: {
     width: '380px',
-    padding: '1.25rem',
+    padding: '1rem',
     display: 'flex',
     flexDirection: 'column',
-    gap: '1rem',
+    gap: '0.8rem',
     background: 'var(--bg-card)',
-    height: '100%',
-    overflowY: 'auto',
+    height: 'calc(100vh - 200px)',
+    overflow: 'hidden',
     boxSizing: 'border-box',
+  },
+  selectedItemsSection: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.5rem',
+    flex: 1,
+    overflow: 'hidden',
   },
   selectedItemsScroll: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '0.6rem',
+    gap: '0.4rem',
     boxSizing: 'border-box',
+    flex: 1,
+    overflowY: 'auto',
+    paddingRight: '0.4rem',
   },
   saveBtnContainer: {
     display: 'flex',
-    justifyContent: 'center',
-    marginTop: '0.5rem',
+    gap: '1rem',
+    marginTop: '0.25rem',
   },
   saveBtnWide: {
-    width: '100%',
-    padding: '0.8rem 2rem',
-    gap: '0.75rem',
-    fontSize: '1rem',
+    flex: 1,
+    padding: '0.6rem 1.5rem',
+    gap: '0.5rem',
+    fontSize: '0.9rem',
   },
   configHeader: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
     borderBottom: '1px solid var(--glass-border)',
-    paddingBottom: '0.75rem',
+    paddingBottom: '0.5rem',
   },
   inputGroup: {
     display: 'flex',
@@ -661,12 +732,12 @@ const styles = {
   },
   majorInput: {
     width: '100%',
-    padding: '0.8rem 1rem',
+    padding: '0.6rem 0.8rem',
     backgroundColor: 'var(--glass)',
     border: '1px solid var(--glass-border)',
     borderRadius: '10px',
     color: 'var(--text-main)',
-    fontSize: '1rem',
+    fontSize: '0.9rem',
     fontWeight: '600',
     boxSizing: 'border-box',
   },
@@ -689,9 +760,9 @@ const styles = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: '0.75rem',
+    padding: '0.5rem 0.6rem',
     backgroundColor: 'rgba(255,255,255,0.02)',
-    borderRadius: '12px',
+    borderRadius: '10px',
     border: '1px solid var(--glass-border)',
     boxSizing: 'border-box',
   },
@@ -699,12 +770,12 @@ const styles = {
     flex: 1,
   },
   selName: {
-    fontSize: '0.85rem',
+    fontSize: '0.8rem',
     fontWeight: '600',
     color: 'var(--text-main)',
   },
   selMeta: {
-    fontSize: '0.7rem',
+    fontSize: '0.65rem',
     color: 'var(--text-muted)',
   },
   qtyRow: {
@@ -755,27 +826,28 @@ const styles = {
     textAlign: 'center',
   },
   menuDealCard: {
-    background: 'linear-gradient(to bottom, #f59e0b, #d97706)',
+    backgroundColor: 'var(--glass)',
     borderRadius: '16px',
-    border: '3px solid #b45309',
-    padding: '1.5rem 1rem 1rem 1rem',
+    border: '1px solid var(--glass-border)',
+    padding: '1.25rem',
     display: 'flex',
     flexDirection: 'column',
     position: 'relative',
     height: '100%',
-    boxShadow: '0 10px 25px rgba(0,0,0,0.3)',
+    boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
+    transition: 'transform 0.3s ease, box-shadow 0.3s ease',
     boxSizing: 'border-box',
-    overflow: 'visible',
+    overflow: 'hidden',
   },
   menuDotContainer: {
     position: 'absolute',
-    top: '0.75rem',
-    right: '0.75rem',
+    top: '1rem',
+    right: '1rem',
     zIndex: 10,
   },
   menuDotBtn: {
-    backgroundColor: 'rgba(255, 255, 255, 0.4)',
-    border: 'none',
+    backgroundColor: 'var(--glass)',
+    border: '1px solid var(--glass-border)',
     borderRadius: '50%',
     width: '32px',
     height: '32px',
@@ -783,6 +855,7 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     cursor: 'pointer',
+    color: 'var(--text-main)',
   },
   dropdownMenu: {
     position: 'absolute',
@@ -812,39 +885,26 @@ const styles = {
     cursor: 'pointer',
   },
   menuDealHeaderContainer: {
-    display: 'flex',
-    justifyContent: 'center',
     marginBottom: '1rem',
     width: '100%',
+    paddingRight: '2rem',
   },
   menuDealHeaderPatch: {
-    backgroundColor: '#ffffff',
-    color: '#000000',
-    padding: '0.4rem 1.25rem',
-    fontWeight: '900',
+    color: 'var(--text-main)',
+    fontWeight: '800',
     fontSize: '1.2rem',
-    fontFamily: 'Impact, Arial Black, sans-serif',
-    letterSpacing: '1px',
-    textTransform: 'uppercase',
-    borderRadius: '4px',
-    transform: 'rotate(-1.5deg)',
-    boxShadow: '0 4px 6px rgba(0,0,0,0.15)',
-    textAlign: 'center',
-    width: 'fit-content',
-    maxWidth: '100%',
+    letterSpacing: '-0.5px',
     whiteSpace: 'nowrap',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
   },
   menuDealItemsArea: {
-    color: '#1e293b',
-    fontWeight: '800',
+    color: 'var(--text-muted)',
+    fontWeight: '500',
     fontSize: '0.85rem',
     display: 'flex',
     flexDirection: 'column',
-    gap: '0.3rem',
-    textAlign: 'left',
-    padding: '0 0.5rem',
+    gap: '0.4rem',
     marginBottom: '1rem',
     flexGrow: 1,
   },
@@ -854,12 +914,10 @@ const styles = {
     textOverflow: 'ellipsis',
   },
   menuDealImageContainer: {
-    height: '130px',
+    aspectRatio: '16/9',
     width: '100%',
     borderRadius: '12px',
     overflow: 'hidden',
-    boxShadow: '0 4px 10px rgba(0,0,0,0.2)',
-    border: '2px solid rgba(255,255,255,0.2)',
     marginBottom: '1rem',
     backgroundColor: 'rgba(0,0,0,0.1)',
   },
@@ -874,30 +932,26 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    background: 'radial-gradient(circle, #78350f 0%, #451a03 100%)',
+    backgroundColor: 'var(--glass)',
   },
   menuDealPriceContainer: {
     display: 'flex',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
     width: '100%',
     marginTop: 'auto',
+    paddingTop: '1rem',
+    borderTop: '1px solid var(--glass-border)',
   },
   menuDealPricePatch: {
-    backgroundColor: '#7f1d1d',
-    color: '#fef08a',
-    padding: '0.4rem 1.5rem',
-    fontWeight: '900',
+    color: 'var(--primary-yellow)',
+    fontWeight: '800',
     fontSize: '1.25rem',
-    fontFamily: 'Impact, Arial Black, sans-serif',
-    borderRadius: '6px',
-    boxShadow: '0 4px 6px rgba(0,0,0,0.2)',
-    textAlign: 'center',
-    width: 'fit-content',
   },
   dealUploadArea: {
     border: '2px dashed var(--glass-border)',
     borderRadius: '10px',
-    height: '85px',
+    height: '70px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -913,6 +967,23 @@ const styles = {
     height: '100%',
     objectFit: 'cover',
   },
+  removeImageBtn: {
+    position: 'absolute',
+    top: '4px',
+    right: '4px',
+    backgroundColor: 'var(--bg-card)',
+    color: 'var(--text-main)',
+    border: '1px solid var(--glass-border)',
+    borderRadius: '50%',
+    width: '24px',
+    height: '24px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+    zIndex: 10,
+    boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
+  },
   dealUploadPrompt: {
     display: 'flex',
     flexDirection: 'column',
@@ -927,8 +998,8 @@ const styles = {
     gap: '0.75rem',
   },
   selectedItemThumb: {
-    width: '40px',
-    height: '40px',
+    width: '32px',
+    height: '32px',
     borderRadius: '6px',
     objectFit: 'cover',
     border: '1px solid var(--glass-border)',

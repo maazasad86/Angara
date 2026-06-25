@@ -3,11 +3,64 @@ import axios from 'axios';
 import Layout from '../components/Layout';
 import { Plus, Edit2, Trash2, X, Check } from 'lucide-react';
 
+const CategoryFormModal = ({ onClose, onAdd }) => {
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    await onAdd({ name, description });
+    setIsSubmitting(false);
+  };
+
+  return (
+    <div style={styles.modalOverlay}>
+      <div style={styles.modal}>
+        <div style={styles.modalHeader}>
+          <div>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: '800', color: 'var(--text-main)' }}>Create Category</h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>Add a new category to organize your menu</p>
+          </div>
+          <button onClick={onClose} style={styles.closeBtn} className="hover-scale"><X size={20} /></button>
+        </div>
+        <form onSubmit={handleSubmit} style={styles.form}>
+          <div style={styles.formGroup}>
+            <label style={styles.label}>Category Name</label>
+            <input 
+              type="text" 
+              value={name} 
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Electronics"
+              required
+              autoFocus
+            />
+          </div>
+          <div style={styles.formGroup}>
+            <label style={styles.label}>Description</label>
+            <input 
+              type="text" 
+              value={description} 
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Tell us more about this category"
+            />
+          </div>
+          <div style={styles.formActions}>
+            <button type="button" onClick={onClose} className="btn-secondary" style={styles.cancelBtn}>Cancel</button>
+            <button type="submit" className="btn-primary" style={styles.submitBtn} disabled={isSubmitting}>
+              {isSubmitting ? 'Creating...' : 'Create Category'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 const Categories = () => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
   const [isEditing, setIsEditing] = useState(null);
   const [editName, setEditName] = useState('');
   const [editDescription, setEditDescription] = useState('');
@@ -28,12 +81,9 @@ const Categories = () => {
     }
   };
 
-  const handleAdd = async (e) => {
-    e.preventDefault();
+  const handleAdd = async ({ name, description }) => {
     try {
       await axios.post('http://localhost:5000/api/categories', { name, description });
-      setName('');
-      setDescription('');
       setShowModal(false);
       fetchCategories();
     } catch (err) {
@@ -155,38 +205,10 @@ const Categories = () => {
       </div>
 
       {showModal && (
-        <div style={styles.modalOverlay}>
-          <div className="glass-card" style={styles.modal}>
-            <div style={styles.modalHeader}>
-              <h3>Add New Category</h3>
-              <button onClick={() => setShowModal(false)} style={styles.closeBtn}><X /></button>
-            </div>
-            <form onSubmit={handleAdd} style={styles.form}>
-              <div style={styles.formGroup}>
-                <label style={styles.label}>Category Name</label>
-                <input 
-                  type="text" 
-                  value={name} 
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Electronics"
-                  required
-                />
-              </div>
-              <div style={styles.formGroup}>
-                <label style={styles.label}>Description</label>
-                <input 
-                  type="text" 
-                  value={description} 
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Tell us more about this category"
-                />
-              </div>
-              <button type="submit" className="btn-primary" style={{ width: '100%', marginTop: '1rem' }}>
-                Create Category
-              </button>
-            </form>
-          </div>
-        </div>
+        <CategoryFormModal 
+          onClose={() => setShowModal(false)}
+          onAdd={handleAdd}
+        />
       )}
     </Layout>
   );
@@ -264,29 +286,56 @@ const styles = {
     left: 0,
     width: '100%',
     height: '100%',
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    backdropFilter: 'blur(5px)',
+    backgroundColor: 'rgba(0,0,0,0.85)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 1000,
-    animation: 'fadeIn 0.3s ease',
+    zIndex: 1100,
+    animation: 'fadeIn 0.2s ease-out',
   },
   modal: {
     width: '90%',
-    maxWidth: '500px',
-    padding: '2.5rem',
+    maxWidth: '450px',
+    padding: '2rem',
     backgroundColor: 'var(--bg-card)',
+    borderRadius: '20px',
+    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+    border: '1px solid var(--glass-border)',
+    transform: 'translateY(0)',
   },
   modalHeader: {
     display: 'flex',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: '2rem',
-    color: 'var(--text-main)',
   },
   closeBtn: {
     color: 'var(--text-muted)',
+    backgroundColor: 'var(--glass)',
+    padding: '0.5rem',
+    borderRadius: '50%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  formActions: {
+    display: 'flex',
+    gap: '1rem',
+    marginTop: '1.5rem',
+  },
+  cancelBtn: {
+    flex: 1,
+    padding: '0.8rem',
+    borderRadius: '12px',
+    backgroundColor: 'transparent',
+    border: '1px solid var(--glass-border)',
+    color: 'var(--text-main)',
+    fontWeight: '600',
+  },
+  submitBtn: {
+    flex: 1,
+    padding: '0.8rem',
+    borderRadius: '12px',
   },
   form: {
     display: 'flex',
@@ -299,16 +348,21 @@ const styles = {
     gap: '0.5rem',
   },
   label: {
-    fontSize: '0.875rem',
+    fontSize: '0.85rem',
     color: 'var(--text-muted)',
-    fontWeight: '500',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
   },
   inlineInput: {
-    padding: '0.5rem 0.75rem',
-    borderRadius: '8px',
-    border: '1px solid var(--primary-yellow)',
+    width: '100%',
+    padding: '0.8rem 1rem',
+    borderRadius: '10px',
+    border: '1px solid var(--glass-border)',
     backgroundColor: 'var(--glass)',
     color: 'var(--text-main)',
+    fontSize: '0.95rem',
+    transition: 'all 0.3s ease',
   }
 };
 

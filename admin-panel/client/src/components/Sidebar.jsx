@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
+import ConfirmModal from './ConfirmModal';
 import { 
   LayoutDashboard, 
   LogOut, 
@@ -14,6 +15,11 @@ import {
 
 const Sidebar = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+  const confirmLogout = () => {
+    setShowLogoutModal(true);
+  };
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -31,7 +37,7 @@ const Sidebar = ({ isOpen, onClose }) => {
   ];
 
   return (
-    <div className={`sidebar-container ${isOpen ? 'open' : ''}`} style={styles.sidebar}>
+    <div className={`sidebar-container ${isOpen ? 'open' : ''}`} style={{ ...styles.sidebar, transform: isOpen ? 'translateX(0)' : 'translateX(-100%)', zIndex: 1000 }}>
       <div style={styles.logoContainer}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <div style={styles.logoIcon}>A</div>
@@ -66,11 +72,19 @@ const Sidebar = ({ isOpen, onClose }) => {
       </nav>
 
       <div style={styles.footerActions}>
-        <button onClick={handleLogout} style={styles.logoutBtn}>
+        <button onClick={confirmLogout} style={styles.logoutBtn} className="hover-scale">
           <LogOut size={20} />
           <span>Logout</span>
         </button>
       </div>
+
+      <ConfirmModal 
+        isOpen={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        onConfirm={handleLogout}
+        title="Sign Out"
+        message="Are you sure you want to log out of the admin panel?"
+      />
     </div>
   );
 };

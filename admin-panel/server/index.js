@@ -35,10 +35,16 @@ app.use((err, req, res, next) => {
 });
 
 // DB Connection
+const PORT = process.env.PORT || 5000;
 mongoose.connect(process.env.MONGO_URI, {
     serverSelectionTimeoutMS: 5000 // Timeout after 5s instead of 30s
 })
-    .then(() => console.log('MongoDB Connected Successfully'))
+    .then(() => {
+        console.log('MongoDB Connected Successfully');
+        app.listen(PORT, () => {
+            console.log(`Server running on port ${PORT}`);
+        });
+    })
     .catch(err => {
         console.error('CRITICAL: MongoDB Connection Error!');
         console.error('Error Details:', err.message);
@@ -46,8 +52,3 @@ mongoose.connect(process.env.MONGO_URI, {
             console.error('TIP: Check your MONGO_URI username and password in .env');
         }
     });
-
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-});

@@ -338,6 +338,7 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     gap: '1.5rem',
+    overflow: 'hidden',
   },
   menuHeader: {
     display: 'flex',
@@ -381,7 +382,7 @@ const styles = {
     flex: 1,
     overflowY: 'auto',
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
+    gridTemplateColumns: 'repeat(3, 1fr)',
     gap: '1rem',
     paddingRight: '0.55rem',
   },
@@ -396,7 +397,7 @@ const styles = {
   },
   itemImageContainer: {
     position: 'relative',
-    height: '110px',
+    aspectRatio: '4/3',
     borderRadius: '8px',
     overflow: 'hidden',
   },
@@ -650,7 +651,7 @@ const styles = {
     textAlign: 'left',
   },
   whatsappDealImageContainerSmall: {
-    height: '90px',
+    aspectRatio: '16/9',
     width: '100%',
     position: 'relative',
     backgroundColor: 'rgba(255,255,255,0.02)',

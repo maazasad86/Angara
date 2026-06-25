@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Layout from '../components/Layout';
+import ConfirmModal from '../components/ConfirmModal';
 import { Plus, Edit2, Trash2, X, Upload, Package } from 'lucide-react';
 
 const Items = () => {
@@ -18,6 +19,12 @@ const Items = () => {
     image: null
   });
   const [imagePreview, setImagePreview] = useState(null);
+  
+  // Confirm Modal State
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    itemId: null,
+  });
 
   useEffect(() => {
     fetchData();
@@ -93,7 +100,17 @@ const Items = () => {
     setShowModal(true);
   };
 
-  const handleDelete = async (id) => {
+  const confirmDelete = (id) => {
+    setConfirmModal({
+      isOpen: true,
+      itemId: id,
+    });
+  };
+
+  const handleDelete = async () => {
+    const id = confirmModal.itemId;
+    if (!id) return;
+    
     console.log('handleDelete clicked for ID:', id);
     try {
       const response = await axios.delete(`http://localhost:5000/api/items/${id}`);
@@ -167,7 +184,7 @@ const Items = () => {
                   <button onClick={() => handleEdit(item)} style={styles.iconBtnEdit}>
                     <Edit2 size={18} />
                   </button>
-                  <button onClick={() => handleDelete(item._id)} style={styles.iconBtnDelete}>
+                  <button onClick={() => confirmDelete(item._id)} style={styles.iconBtnDelete}>
                     <Trash2 size={18} />
                   </button>
                 </div>
@@ -263,6 +280,14 @@ const Items = () => {
           </div>
         </div>
       )}
+
+      <ConfirmModal 
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ isOpen: false, itemId: null })}
+        onConfirm={handleDelete}
+        title="Delete Item"
+        message="Are you sure you want to delete this item? This action cannot be undone."
+      />
     </Layout>
   );
 };

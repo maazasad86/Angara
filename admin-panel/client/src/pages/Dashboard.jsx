@@ -1,67 +1,131 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import Layout from '../components/Layout';
-import { TrendingUp, Users, DollarSign, Package } from 'lucide-react';
+import { Package, Tags, Gift, Activity } from 'lucide-react';
 
 const Dashboard = () => {
+  const [statsData, setStatsData] = useState({
+    items: 0,
+    categories: 0,
+    deals: 0,
+  });
+  const [recentItems, setRecentItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      const [itemsRes, catsRes, dealsRes] = await Promise.all([
+        axios.get('http://localhost:5000/api/items'),
+        axios.get('http://localhost:5000/api/categories'),
+        axios.get('http://localhost:5000/api/deals')
+      ]);
+
+      const items = itemsRes.data || [];
+      const categories = catsRes.data || [];
+      const deals = dealsRes.data || [];
+
+      setStatsData({
+        items: items.length,
+        categories: categories.length,
+        deals: deals.length,
+      });
+
+      // Sort items by createdAt descending and take top 5
+      const sortedItems = [...items].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 5);
+      setRecentItems(sortedItems);
+      
+      setLoading(false);
+    } catch (err) {
+      console.error('Error fetching dashboard data:', err);
+      setLoading(false);
+    }
+  };
+
   const stats = [
-    { title: 'Total Revenue', value: '$54,230', change: '+12.5%', icon: <DollarSign />, color: 'var(--primary-yellow)' },
-    { title: 'Active Users', value: '1,240', change: '+5.2%', icon: <Users />, color: '#60a5fa' },
-    { title: 'Total Orders', value: '452', change: '-2.4%', icon: <Package />, color: 'var(--accent-red)' },
-    { title: 'Growth Rate', value: '18.4%', change: '+4.1%', icon: <TrendingUp />, color: '#4ade80' },
+    { title: 'Total Items', value: statsData.items, icon: <Package />, color: 'var(--primary-yellow)' },
+    { title: 'Total Categories', value: statsData.categories, icon: <Tags />, color: '#60a5fa' },
+    { title: 'Total Deals', value: statsData.deals, icon: <Gift />, color: 'var(--accent-red)' },
   ];
 
   return (
     <Layout>
-      <div style={styles.grid}>
-        {stats.map((stat, index) => (
-          <div key={index} className="glass-card" style={styles.statCard}>
-            <div style={{ ...styles.iconWrapper, backgroundColor: `${stat.color}20`, color: stat.color }}>
-              {stat.icon}
-            </div>
-            <div style={styles.statInfo}>
-              <p style={styles.statTitle}>{stat.title}</p>
-              <h3 style={styles.statValue}>{stat.value}</h3>
-              <span style={{ 
-                ...styles.statChange, 
-                color: stat.change.startsWith('+') ? '#4ade80' : 'var(--accent-red)' 
-              }}>
-                {stat.change} <span style={{ color: 'var(--text-gray)', fontSize: '0.75rem' }}>vs last month</span>
-              </span>
-            </div>
+      {loading ? (
+        <div style={{ padding: '2rem', color: 'var(--text-muted)' }}>Loading dashboard data...</div>
+      ) : (
+        <>
+          <div style={styles.grid}>
+            {stats.map((stat, index) => (
+              <div key={index} className="glass-card" style={styles.statCard}>
+                <div style={{ ...styles.iconWrapper, backgroundColor: `${stat.color}20`, color: stat.color }}>
+                  {stat.icon}
+                </div>
+                <div style={styles.statInfo}>
+                  <p style={styles.statTitle}>{stat.title}</p>
+                  <h3 style={styles.statValue}>{stat.value}</h3>
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
 
-      <div style={styles.chartsRow}>
-        <div className="glass-card" style={styles.mainCharCard}>
-          <h3 style={styles.cardTitle}>Recent Activity</h3>
-          <div style={styles.placeholderChart}>
-            {/* Table placeholder */}
-            <table style={styles.table}>
-              <thead>
-                <tr style={styles.tr}>
-                  <th style={styles.th}>USER</th>
-                  <th style={styles.th}>ACTION</th>
-                  <th style={styles.th}>STATUS</th>
-                  <th style={styles.th}>DATE</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[1, 2, 3].map(i => (
-                  <tr key={i} style={styles.tr}>
-                    <td style={styles.td}>User {i}</td>
-                    <td style={styles.td}>Updated Profile</td>
-                    <td style={styles.td}>
-                      <span style={styles.statusBadge}>Success</span>
-                    </td>
-                    <td style={styles.td}>Oct {10 + i}, 2023</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div style={styles.chartsRow}>
+            <div className="glass-card" style={styles.mainCharCard}>
+              <div style={styles.headerFlex}>
+                <Activity color="var(--primary-yellow)" />
+                <h3 style={styles.cardTitle}>Recently Added Items</h3>
+              </div>
+              
+              <div style={styles.placeholderChart}>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={styles.table}>
+                    <thead>
+                      <tr style={styles.tr}>
+                        <th style={styles.th}>IMAGE</th>
+                        <th style={styles.th}>NAME</th>
+                        <th style={styles.th}>CATEGORY</th>
+                        <th style={styles.th}>PRICE</th>
+                        <th style={styles.th}>DATE</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recentItems.length > 0 ? (
+                        recentItems.map((item) => (
+                          <tr key={item._id} style={styles.tr}>
+                            <td style={styles.td}>
+                              <img 
+                                src={item.image} 
+                                alt={item.name} 
+                                style={{ width: '40px', height: '40px', borderRadius: '8px', objectFit: 'cover' }} 
+                              />
+                            </td>
+                            <td style={styles.td}>{item.name}</td>
+                            <td style={styles.td}>
+                              <span style={styles.statusBadge}>{item.category?.name || 'N/A'}</span>
+                            </td>
+                            <td style={styles.td}>Rs. {item.price}</td>
+                            <td style={styles.td}>
+                              {new Date(item.createdAt).toLocaleDateString()}
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr style={styles.tr}>
+                          <td colSpan="5" style={{ ...styles.td, textAlign: 'center', color: 'var(--text-muted)' }}>
+                            No recent items found
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
+        </>
+      )}
     </Layout>
   );
 };
@@ -101,21 +165,22 @@ const styles = {
     fontWeight: '700',
     color: 'var(--text-main)',
   },
-  statChange: {
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    marginTop: '0.25rem',
-  },
   chartsRow: {
     marginTop: '2rem',
   },
   mainCharCard: {
     padding: '2rem',
   },
+  headerFlex: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.75rem',
+    marginBottom: '1.5rem',
+  },
   cardTitle: {
     fontSize: '1.25rem',
-    marginBottom: '1.5rem',
     color: 'var(--text-main)',
+    margin: 0,
   },
   placeholderChart: {
     width: '100%',
@@ -124,6 +189,7 @@ const styles = {
   table: {
     width: '100%',
     borderCollapse: 'collapse',
+    minWidth: '600px',
   },
   th: {
     textAlign: 'left',
@@ -135,16 +201,19 @@ const styles = {
   },
   tr: {
     borderBottom: '1px solid var(--glass-border)',
+    transition: 'background-color 0.2s ease',
   },
   td: {
     padding: '1rem',
     fontSize: '0.9rem',
     color: 'var(--text-main)',
+    verticalAlign: 'middle',
   },
   statusBadge: {
-    padding: '0.25rem 0.75rem',
-    backgroundColor: 'rgba(74, 222, 128, 0.1)',
-    color: '#4ade80',
+    padding: '0.35rem 0.85rem',
+    backgroundColor: 'var(--glass)',
+    border: '1px solid var(--glass-border)',
+    color: 'var(--text-main)',
     borderRadius: '50px',
     fontSize: '0.75rem',
     fontWeight: '600',
