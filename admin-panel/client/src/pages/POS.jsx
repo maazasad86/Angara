@@ -26,6 +26,10 @@ const POS = () => {
   const [showHoldPrompt, setShowHoldPrompt] = useState(false);
   const [holdNoteInput, setHoldNoteInput] = useState('');
 
+  // Custom Modal for Delete Confirmation
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [orderToDelete, setOrderToDelete] = useState(null);
+
   useEffect(() => {
     fetchData();
     const storedHolds = localStorage.getItem('angaara_held_orders');
@@ -138,11 +142,18 @@ const POS = () => {
     setShowHeldModal(false);
   };
   
-  const handleDeleteHold = (id) => {
-    if(!window.confirm("Delete this parked order permanently?")) return;
-    const updatedHolds = heldOrders.filter(h => h.id !== id);
+  const handleDeleteHoldClick = (id) => {
+    setOrderToDelete(id);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeleteHold = () => {
+    if (!orderToDelete) return;
+    const updatedHolds = heldOrders.filter(h => h.id !== orderToDelete);
     setHeldOrders(updatedHolds);
     localStorage.setItem('angaara_held_orders', JSON.stringify(updatedHolds));
+    setShowDeleteConfirm(false);
+    setOrderToDelete(null);
   };
 
   const handleCheckoutAndPrint = async () => {
@@ -502,7 +513,7 @@ const POS = () => {
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                       <button onClick={() => handleResumeOrder(ho)} style={{ flex: 1, padding: '0.6rem', backgroundColor: 'var(--primary-yellow)', color: '#000', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Load Bill</button>
-                      <button onClick={() => handleDeleteHold(ho.id)} style={{ padding: '0.6rem', backgroundColor: 'rgba(239, 68, 68, 0.2)', color: '#ef4444', border: 'none', borderRadius: '4px', cursor: 'pointer' }}><Trash2 size={16} /></button>
+                      <button onClick={() => handleDeleteHoldClick(ho.id)} style={{ padding: '0.6rem', backgroundColor: 'rgba(239, 68, 68, 0.2)', color: '#ef4444', border: 'none', borderRadius: '4px', cursor: 'pointer' }}><Trash2 size={16} /></button>
                     </div>
                   </div>
                 ))}
@@ -536,6 +547,24 @@ const POS = () => {
             <div style={{ display: 'flex', gap: '1rem' }}>
               <button onClick={() => setShowHoldPrompt(false)} style={{ flex: 1, padding: '0.8rem', backgroundColor: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-main)', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>Cancel</button>
               <button onClick={confirmHoldOrder} style={{ flex: 1, padding: '0.8rem', backgroundColor: 'var(--primary-yellow)', color: '#000', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>Save Bill</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="glass-card" style={{ width: '400px', padding: '2rem', textAlign: 'center' }}>
+            <div style={{ marginBottom: '1.5rem', color: '#ef4444' }}>
+              <Trash2 size={48} />
+            </div>
+            <h2 style={{ color: 'var(--text-main)', fontSize: '1.25rem', marginBottom: '0.5rem' }}>Delete Pending Bill?</h2>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '2rem', fontSize: '0.9rem' }}>Are you sure you want to permanently delete this parked bill? This action cannot be undone.</p>
+            
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <button onClick={() => setShowDeleteConfirm(false)} style={{ flex: 1, padding: '0.8rem', backgroundColor: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-main)', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>Cancel</button>
+              <button onClick={confirmDeleteHold} style={{ flex: 1, padding: '0.8rem', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>Delete</button>
             </div>
           </div>
         </div>
