@@ -380,7 +380,7 @@ const POS = () => {
               ))
             ) : (
               <div style={styles.emptyCart}>
-                <ShoppingCart size={48} style={{ opacity: 0.1, marginBottom: '1rem' }} />
+                <ShoppingCart size={32} style={{ opacity: 0.1, marginBottom: '0.5rem' }} />
                 <p>Your cart is empty</p>
               </div>
             )}
@@ -822,7 +822,7 @@ const styles = {
     justifyContent: 'center',
     color: 'var(--text-muted)',
     opacity: 0.5,
-    padding: '2rem 0',
+    padding: '1rem 0',
   },
   emptyState: {
     gridColumn: '1 / -1',
