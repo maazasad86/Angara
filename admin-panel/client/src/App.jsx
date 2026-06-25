@@ -6,6 +6,7 @@ import Categories from './pages/Categories';
 import Items from './pages/Items';
 import POS from './pages/POS';
 import Deals from './pages/Deals';
+import Sales from './pages/Sales';
 import { Agentation } from 'agentation';
 
 // Simple Protected Route
@@ -65,6 +66,14 @@ function App() {
           element={
             <ProtectedRoute>
               <Deals />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/sales" 
+          element={
+            <ProtectedRoute>
+              <Sales />
             </ProtectedRoute>
           } 
         />

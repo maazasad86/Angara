@@ -13,6 +13,7 @@ const Layout = ({ children }) => {
   const pageTitles = {
     '/dashboard': 'Dashboard Overview',
     '/pos': 'Point of Sale',
+    '/sales': 'Sales Record',
     '/deals': 'Deals Management',
     '/categories': 'Categories',
     '/items': 'Items Inventory'

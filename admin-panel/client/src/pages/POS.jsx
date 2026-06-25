@@ -69,8 +69,28 @@ const POS = () => {
         return matchesCategory && matchesSearch;
       });
 
-  const handlePrint = () => {
-    window.print();
+  const handlePrint = async () => {
+    try {
+      const saleItems = cart.map(item => ({
+        itemId: item._id,
+        name: item.name,
+        type: item.items ? 'deal' : 'item',
+        categoryName: item.items ? 'Deals' : (item.category?.name || 'Uncategorized'),
+        price: item.price,
+        quantity: item.quantity
+      }));
+
+      await axios.post('http://localhost:5000/api/sales', {
+        items: saleItems,
+        totalAmount: total
+      });
+
+      window.print();
+      setCart([]);
+    } catch (err) {
+      console.error('Error recording sale:', err);
+      alert('Failed to save sale to records: ' + (err.response?.data?.message || err.message));
+    }
   };
 
   return (
