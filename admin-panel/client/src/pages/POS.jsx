@@ -92,7 +92,7 @@ const POS = () => {
 
   const handleHoldOrder = () => {
     if (cart.length === 0) return;
-    const note = window.prompt("Enter Note/Table for Held Order (e.g., Table 4):") || `Order ${new Date().toLocaleTimeString()}`;
+    const note = window.prompt("Enter Table No. or Name (e.g., Table 4, Ali):") || `Order ${new Date().toLocaleTimeString()}`;
     const newHold = {
       id: Date.now().toString(),
       note,
@@ -301,7 +301,7 @@ const POS = () => {
         {/* Right Side: Billing */}
         <div className="glass-card fixed-side-panel" style={styles.billSide}>
           <div style={styles.billHeader}>
-            <h3 style={{ fontWeight: '800' }}>Current Order</h3>
+            <h3 style={{ fontWeight: '800' }}>Current Bill</h3>
             <ShoppingCart size={24} />
           </div>
 
@@ -382,12 +382,8 @@ const POS = () => {
                 <span>Subtotal</span>
                 <span>Rs. {total.toFixed(2)}</span>
               </div>
-              <div style={styles.summaryRow}>
-                <span>Tax (0%)</span>
-                <span>Rs. 0.00</span>
-              </div>
               <div style={{ ...styles.summaryRow, ...styles.totalRow }}>
-                <span>Total Amount</span>
+                <span>Final Amount</span>
                 <span>Rs. {total.toFixed(2)}</span>
               </div>
             </div>
@@ -398,13 +394,13 @@ const POS = () => {
                 style={{...styles.printBtn, flex: 1, backgroundColor: 'var(--glass)', border: '1px solid var(--glass-border)', color: 'var(--text-main)'}}
                 disabled={cart.length === 0}
               >
-                Hold Order
+                Hold Bill
               </button>
               <button 
                 onClick={() => setShowHeldModal(true)} 
                 style={{...styles.printBtn, flex: 1, backgroundColor: 'var(--glass)', border: '1px solid var(--glass-border)', color: 'var(--text-main)'}}
               >
-                Recall ({heldOrders.length})
+                Pending Bills ({heldOrders.length})
               </button>
             </div>
 
@@ -414,7 +410,7 @@ const POS = () => {
                 style={{...styles.printBtn, flex: 1, backgroundColor: '#ef4444', color: '#fff', border: 'none'}}
                 disabled={cart.length === 0}
               >
-                Print KOT
+                Kitchen Slip
               </button>
               <button 
                 onClick={handleCheckoutAndPrint} 
@@ -422,7 +418,7 @@ const POS = () => {
                 className="btn-primary"
                 disabled={cart.length === 0}
               >
-                <Printer size={20} /> Checkout
+                <Printer size={20} /> Pay & Print
               </button>
             </div>
           </div>
@@ -477,12 +473,12 @@ const POS = () => {
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div className="glass-card" style={{ width: '500px', maxHeight: '80vh', overflowY: 'auto', padding: '2rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-main)' }}><Clock size={24} /> Parked Orders ({heldOrders.length})</h2>
+              <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-main)' }}><Clock size={24} /> Pending Bills ({heldOrders.length})</h2>
               <button onClick={() => setShowHeldModal(false)} style={{ backgroundColor: 'transparent', border: 'none', color: 'var(--text-main)', cursor: 'pointer' }}><X size={24} /></button>
             </div>
             
             {heldOrders.length === 0 ? (
-              <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '2rem 0' }}>No parked orders.</p>
+              <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '2rem 0' }}>No pending bills right now.</p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {heldOrders.map(ho => (
@@ -495,7 +491,7 @@ const POS = () => {
                       <span style={{ color: 'var(--primary-yellow)', fontWeight: 'bold' }}>{ho.orderType}</span> • Rs. {ho.total} • {ho.cart.length} items
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <button onClick={() => handleResumeOrder(ho)} style={{ flex: 1, padding: '0.6rem', backgroundColor: 'var(--primary-yellow)', color: '#000', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Resume Order</button>
+                      <button onClick={() => handleResumeOrder(ho)} style={{ flex: 1, padding: '0.6rem', backgroundColor: 'var(--primary-yellow)', color: '#000', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Load Bill</button>
                       <button onClick={() => handleDeleteHold(ho.id)} style={{ padding: '0.6rem', backgroundColor: 'rgba(239, 68, 68, 0.2)', color: '#ef4444', border: 'none', borderRadius: '4px', cursor: 'pointer' }}><Trash2 size={16} /></button>
                     </div>
                   </div>
