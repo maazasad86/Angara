@@ -428,7 +428,7 @@ const POS = () => {
                 className="btn-primary"
                 disabled={cart.length === 0}
               >
-                <Printer size={20} /> Pay & Print
+                <Printer size={18} /> Pay & Print
               </button>
             </div>
           </div>
@@ -804,9 +804,16 @@ const styles = {
   },
   printBtn: {
     width: '100%',
-    padding: '0.8rem',
+    padding: '0.6rem',
     gap: '0.5rem',
-    fontSize: '0.95rem',
+    fontSize: '0.85rem',
+    borderRadius: '12px',
+    fontWeight: '700',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
   },
   emptyCart: {
     display: 'flex',
