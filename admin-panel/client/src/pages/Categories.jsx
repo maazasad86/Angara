@@ -5,7 +5,7 @@ import { Spinner } from '../components/ui/spinner-1';
 import ConfirmModal from '../components/ConfirmModal';
 import { Plus, Edit2, Trash2, X, Check } from 'lucide-react';
 
-const CategoryFormModal = ({ onClose, onAdd }) => {
+const CategoryFormModal = ({ onClose, onAdd, existingCategories = [] }) => {
   const [name, setName] = useState('');
   const [subCategoriesInput, setSubCategoriesInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -38,7 +38,13 @@ const CategoryFormModal = ({ onClose, onAdd }) => {
               placeholder="e.g. Burgers"
               required
               autoFocus
+              list="category-suggestions"
             />
+            <datalist id="category-suggestions">
+              {existingCategories.map((c, i) => (
+                <option key={i} value={c.name} />
+              ))}
+            </datalist>
           </div>
           <div style={styles.formGroup}>
             <label style={styles.label}>Sub Categories (comma separated)</label>
@@ -228,6 +234,7 @@ const Categories = () => {
         <CategoryFormModal 
           onClose={() => setShowModal(false)}
           onAdd={handleAdd}
+          existingCategories={categories}
         />
       )}
 
