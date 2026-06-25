@@ -30,6 +30,10 @@ const POS = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [orderToDelete, setOrderToDelete] = useState(null);
 
+  // Cash Calculator / Checkout Modal
+  const [showCheckoutModal, setShowCheckoutModal] = useState(false);
+  const [cashReceived, setCashReceived] = useState('');
+
   useEffect(() => {
     fetchData();
     const storedHolds = localStorage.getItem('angaara_held_orders');
@@ -182,6 +186,8 @@ const POS = () => {
         setOrderType('Takeaway');
         setCustomerName('');
         setCustomerPhone('');
+        setShowCheckoutModal(false);
+        setCashReceived('');
       }, 100);
     } catch (err) {
       console.error('Error recording sale:', err);
@@ -434,7 +440,10 @@ const POS = () => {
                 Kitchen Slip
               </button>
               <button 
-                onClick={handleCheckoutAndPrint} 
+                onClick={() => {
+                  setCashReceived(total.toString());
+                  setShowCheckoutModal(true);
+                }} 
                 style={{...styles.printBtn, flex: 1.5}} 
                 className="btn-primary"
                 disabled={cart.length === 0}
@@ -565,6 +574,57 @@ const POS = () => {
             <div style={{ display: 'flex', gap: '1rem' }}>
               <button onClick={() => setShowDeleteConfirm(false)} style={{ flex: 1, padding: '0.8rem', backgroundColor: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-main)', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>Cancel</button>
               <button onClick={confirmDeleteHold} style={{ flex: 1, padding: '0.8rem', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cash Calculator / Checkout Modal */}
+      {showCheckoutModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="glass-card" style={{ width: '450px', padding: '2rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h2 style={{ color: 'var(--text-main)', fontSize: '1.4rem', fontWeight: '800' }}>Cash & Checkout</h2>
+              <button onClick={() => setShowCheckoutModal(false)} style={{ backgroundColor: 'transparent', border: 'none', color: 'var(--text-main)', cursor: 'pointer' }}><X size={24} /></button>
+            </div>
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', padding: '1rem', backgroundColor: 'rgba(250, 204, 21, 0.1)', borderRadius: '8px', border: '1px solid rgba(250, 204, 21, 0.3)' }}>
+              <span style={{ fontSize: '1.1rem', fontWeight: '600', color: 'var(--text-main)' }}>Total Bill:</span>
+              <span style={{ fontSize: '1.4rem', fontWeight: '800', color: 'var(--primary-yellow)' }}>Rs. {total.toFixed(0)}</span>
+            </div>
+
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>Cash Received (Rs.)</label>
+              <input 
+                type="number" 
+                value={cashReceived}
+                onChange={(e) => setCashReceived(e.target.value)}
+                placeholder="Enter amount given by customer..."
+                style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '2px solid var(--glass-border)', backgroundColor: 'var(--bg)', color: 'var(--text-main)', fontSize: '1.5rem', fontWeight: '700', textAlign: 'right' }}
+                autoFocus
+                onKeyDown={(e) => e.key === 'Enter' && handleCheckoutAndPrint()}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
+              <button onClick={() => setCashReceived(total.toString())} style={{ flex: 1, padding: '0.6rem', backgroundColor: 'rgba(255,255,255,0.05)', color: 'var(--text-main)', border: '1px solid var(--glass-border)', borderRadius: '6px', cursor: 'pointer', fontWeight: '600' }}>Exact</button>
+              <button onClick={() => setCashReceived('500')} style={{ flex: 1, padding: '0.6rem', backgroundColor: 'rgba(255,255,255,0.05)', color: 'var(--text-main)', border: '1px solid var(--glass-border)', borderRadius: '6px', cursor: 'pointer', fontWeight: '600' }}>500</button>
+              <button onClick={() => setCashReceived('1000')} style={{ flex: 1, padding: '0.6rem', backgroundColor: 'rgba(255,255,255,0.05)', color: 'var(--text-main)', border: '1px solid var(--glass-border)', borderRadius: '6px', cursor: 'pointer', fontWeight: '600' }}>1000</button>
+              <button onClick={() => setCashReceived('5000')} style={{ flex: 1, padding: '0.6rem', backgroundColor: 'rgba(255,255,255,0.05)', color: 'var(--text-main)', border: '1px solid var(--glass-border)', borderRadius: '6px', cursor: 'pointer', fontWeight: '600' }}>5000</button>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem', padding: '1rem', backgroundColor: 'rgba(255, 255, 255, 0.03)', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
+              <span style={{ fontSize: '1rem', color: 'var(--text-muted)' }}>Change to Return:</span>
+              <span style={{ fontSize: '1.5rem', fontWeight: '800', color: (Number(cashReceived) - total) >= 0 ? '#4ade80' : '#ef4444' }}>
+                Rs. {cashReceived ? (Number(cashReceived) - total).toFixed(0) : '0'}
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <button onClick={() => setShowCheckoutModal(false)} style={{ flex: 1, padding: '1rem', backgroundColor: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-main)', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>Cancel</button>
+              <button onClick={handleCheckoutAndPrint} style={{ flex: 2, padding: '1rem', backgroundColor: 'var(--primary-yellow)', color: '#000', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '800', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                <Printer size={20} /> Confirm & Print Bill
+              </button>
             </div>
           </div>
         </div>
