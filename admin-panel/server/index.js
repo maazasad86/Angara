@@ -28,6 +28,8 @@ app.use('/api/items', require('./routes/items'));
 app.use('/api/deals', require('./routes/deals'));
 app.use('/api/sales', require('./routes/sales'));
 app.use('/api/reports', require('./routes/reports'));
+app.use('/api/expenses', require('./routes/expenses'));
+app.use('/api/dashboard', require('./routes/dashboard'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
