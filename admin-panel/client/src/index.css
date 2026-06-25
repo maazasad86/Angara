@@ -139,8 +139,33 @@ select option {
 }
 .header-toggle { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; background-color: var(--glass); border-radius: 12px; border: 1px solid var(--glass-border); color: var(--text-main); cursor: pointer; transition: background-color 0.2s ease, border-color 0.2s ease; } .header-toggle:hover { background-color: var(--glass-border); border-color: var(--primary-yellow); } 
 
+.sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background-color: rgba(0, 0, 0, 0); /* Fallback */
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  padding: 1.5rem 3rem;
+  margin: -2rem -3rem 2rem -3rem;
+  border-bottom: 1px solid var(--glass-border);
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+[data-theme='dark'] .sticky-header {
+  background-color: rgba(10, 10, 10, 0.85);
+}
+[data-theme='light'] .sticky-header {
+  background-color: rgba(248, 248, 248, 0.85);
+}
+
 /* Responsive Media Queries */
 @media (max-width: 1100px) {
+  .sticky-header {
+    padding: 1.5rem;
+    margin: -1.5rem -1.5rem 1.5rem -1.5rem;
+  }
+  
   .layout-main {
     margin-left: 0 !important;
     padding: 1.5rem !important;

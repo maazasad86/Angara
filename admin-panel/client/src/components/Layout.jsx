@@ -40,7 +40,7 @@ const Layout = ({ children }) => {
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
       
       <main className="layout-main" style={{ ...styles.main, marginLeft: isSidebarOpen && !isMobile ? '280px' : '0' }}>
-        <header className="responsive-header" style={styles.header}>
+        <header className="responsive-header sticky-header" style={styles.header}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <button 
               className="sidebar-toggle-btn" 
@@ -84,7 +84,6 @@ const styles = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: '3rem',
   },
   menuBtn: {
     display: 'flex',
