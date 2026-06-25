@@ -142,6 +142,15 @@ const Sales = () => {
     };
   }, [salesByDate]);
 
+  // Helper for dynamic font size
+  const getDynamicFontSize = (valueStr) => {
+    const len = valueStr.length;
+    if (len > 12) return '1rem';
+    if (len > 9) return '1.15rem';
+    if (len > 7) return '1.25rem';
+    return '1.4rem';
+  };
+
   // Pagination logic
   const paginatedItemizedSales = useMemo(() => {
     return filteredItemizedSales.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
@@ -204,41 +213,49 @@ const Sales = () => {
         <div style={styles.metricsGrid}>
           <div className="glass-card" style={styles.metricCard}>
             <div style={{ ...styles.iconContainer, backgroundColor: 'rgba(250, 204, 21, 0.1)', color: 'var(--primary-yellow)' }}>
-              <DollarSign size={24} />
+              <DollarSign size={20} />
             </div>
             <div>
               <p style={styles.metricTitle}>Total Revenue</p>
-              <h2 style={styles.metricValue}>Rs. {totalRevenue.toLocaleString()}</h2>
+              <h2 style={{ ...styles.metricValue, fontSize: getDynamicFontSize(`Rs. ${totalRevenue.toLocaleString()}`) }}>
+                Rs. {totalRevenue.toLocaleString()}
+              </h2>
             </div>
           </div>
 
           <div className="glass-card" style={styles.metricCard}>
             <div style={{ ...styles.iconContainer, backgroundColor: 'rgba(96, 165, 250, 0.1)', color: '#60a5fa' }}>
-              <ShoppingBag size={24} />
+              <ShoppingBag size={20} />
             </div>
             <div>
               <p style={styles.metricTitle}>Total Orders</p>
-              <h2 style={styles.metricValue}>{totalOrders}</h2>
+              <h2 style={{ ...styles.metricValue, fontSize: getDynamicFontSize(`${totalOrders}`) }}>
+                {totalOrders}
+              </h2>
             </div>
           </div>
 
           <div className="glass-card" style={styles.metricCard}>
             <div style={{ ...styles.iconContainer, backgroundColor: 'rgba(74, 222, 128, 0.1)', color: '#4ade80' }}>
-              <Package size={24} />
+              <Package size={20} />
             </div>
             <div>
               <p style={styles.metricTitle}>Items Sold</p>
-              <h2 style={styles.metricValue}>{totalItemsSold}</h2>
+              <h2 style={{ ...styles.metricValue, fontSize: getDynamicFontSize(`${totalItemsSold}`) }}>
+                {totalItemsSold}
+              </h2>
             </div>
           </div>
 
           <div className="glass-card" style={styles.metricCard}>
             <div style={{ ...styles.iconContainer, backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>
-              <TrendingUp size={24} />
+              <TrendingUp size={20} />
             </div>
             <div>
               <p style={styles.metricTitle}>Avg. Order Value</p>
-              <h2 style={styles.metricValue}>Rs. {Math.round(averageOrderValue).toLocaleString()}</h2>
+              <h2 style={{ ...styles.metricValue, fontSize: getDynamicFontSize(`Rs. ${Math.round(averageOrderValue).toLocaleString()}`) }}>
+                Rs. {Math.round(averageOrderValue).toLocaleString()}
+              </h2>
             </div>
           </div>
         </div>
@@ -473,28 +490,30 @@ const styles = {
     gap: '1rem',
   },
   metricCard: {
-    padding: '1rem 1.5rem',
+    padding: '0.75rem 1rem',
     display: 'flex',
     alignItems: 'center',
-    gap: '1.25rem',
+    gap: '1rem',
   },
   iconContainer: {
-    width: '48px',
-    height: '48px',
-    borderRadius: '12px',
+    width: '40px',
+    height: '40px',
+    borderRadius: '10px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
   },
   metricTitle: {
-    fontSize: '0.85rem',
+    fontSize: '0.75rem',
     color: 'var(--text-muted)',
-    marginBottom: '0.2rem',
+    marginBottom: '0.1rem',
   },
   metricValue: {
     fontSize: '1.4rem',
     fontWeight: '800',
     color: 'var(--text-main)',
+    whiteSpace: 'nowrap',
+    transition: 'font-size 0.3s ease',
   },
   contentCard: {
     padding: '0',
