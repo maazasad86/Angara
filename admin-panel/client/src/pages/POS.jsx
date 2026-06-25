@@ -339,14 +339,14 @@ const POS = () => {
                 placeholder="Phone (e.g. 0300...)" 
                 value={customerPhone}
                 onChange={(e) => setCustomerPhone(e.target.value)}
-                style={styles.customerInput}
+                style={{ ...styles.customerInput, flex: 1, minWidth: 0 }}
               />
               <input 
                 type="text" 
                 placeholder="Customer Name" 
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
-                style={styles.customerInput}
+                style={{ ...styles.customerInput, flex: 1, minWidth: 0 }}
               />
             </div>
           )}
@@ -711,7 +711,7 @@ const styles = {
   },
   customerInfoContainer: {
     display: 'flex',
-    flexDirection: 'column',
+    flexDirection: 'row',
     gap: '0.4rem',
     marginBottom: '0.5rem',
   },
