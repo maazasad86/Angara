@@ -34,6 +34,11 @@ const POS = () => {
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [cashReceived, setCashReceived] = useState('');
 
+  // Shift Management State
+  const [showShiftModal, setShowShiftModal] = useState(false);
+  const [shiftData, setShiftData] = useState(null);
+  const [drawerCashInput, setDrawerCashInput] = useState('');
+
   useEffect(() => {
     fetchData();
     const storedHolds = localStorage.getItem('angaara_held_orders');
@@ -158,6 +163,43 @@ const POS = () => {
     localStorage.setItem('angaara_held_orders', JSON.stringify(updatedHolds));
     setShowDeleteConfirm(false);
     setOrderToDelete(null);
+  };
+
+  const handleOpenShiftModal = async () => {
+    try {
+      const res = await axios.get('http://localhost:5000/api/reports/current-shift');
+      setShiftData(res.data);
+      setDrawerCashInput(res.data.systemCash.toString()); // default exact
+      setShowShiftModal(true);
+    } catch (err) {
+      alert("Failed to load shift data: " + err.message);
+    }
+  };
+
+  const submitShiftClose = async () => {
+    try {
+      const res = await axios.post('http://localhost:5000/api/reports/close-shift', {
+        drawerCash: drawerCashInput,
+        notes: 'Closed via POS'
+      });
+      
+      const report = res.data;
+      
+      const diff = report.difference;
+      const statusText = diff === 0 ? "Exact Match" : diff < 0 ? `Shortage: Rs. ${Math.abs(diff)}` : `Excess: Rs. ${diff}`;
+      
+      const msg = `*ANGARA RESTAURANT - Z-REPORT*%0A--------------------%0A*Orders:* ${report.totalOrders}%0A*System Cash:* Rs. ${report.systemCash}%0A*Drawer Cash:* Rs. ${report.drawerCash}%0A*Status:* ${statusText}%0A--------------------%0A*Time:* ${new Date().toLocaleTimeString()}`;
+      
+      window.open(`https://wa.me/?text=${msg}`, '_blank');
+      
+      setShowShiftModal(false);
+      setShiftData(null);
+      setDrawerCashInput('');
+      alert("Shift Closed Successfully!");
+      
+    } catch (err) {
+      alert("Failed to close shift: " + err.message);
+    }
   };
 
   const handleCheckoutAndPrint = async () => {
@@ -329,7 +371,7 @@ const POS = () => {
         <div className="glass-card fixed-side-panel" style={styles.billSide}>
           <div style={styles.billHeader}>
             <h3 style={{ fontWeight: '800' }}>Current Bill</h3>
-            <ShoppingCart size={24} />
+            <button onClick={handleOpenShiftModal} style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '0.4rem 0.8rem', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 'bold', cursor: 'pointer' }}>Close Shift (Z)</button>
           </div>
 
           <div style={styles.orderTypeSelector}>
@@ -624,6 +666,58 @@ const POS = () => {
               <button onClick={() => setShowCheckoutModal(false)} style={{ flex: 1, padding: '1rem', backgroundColor: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-main)', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>Cancel</button>
               <button onClick={handleCheckoutAndPrint} style={{ flex: 2, padding: '1rem', backgroundColor: 'var(--primary-yellow)', color: '#000', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '800', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
                 <Printer size={20} /> Confirm & Print Bill
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Close Shift (Z-Report) Modal */}
+      {showShiftModal && shiftData && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="glass-card" style={{ width: '450px', padding: '2rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h2 style={{ color: '#ef4444', fontSize: '1.4rem', fontWeight: '800' }}>Close Shift (Z-Report)</h2>
+              <button onClick={() => setShowShiftModal(false)} style={{ backgroundColor: 'transparent', border: 'none', color: 'var(--text-main)', cursor: 'pointer' }}><X size={24} /></button>
+            </div>
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', padding: '1rem', backgroundColor: 'rgba(255, 255, 255, 0.05)', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
+              <span style={{ fontSize: '1.1rem', fontWeight: '600', color: 'var(--text-main)' }}>System Cash:</span>
+              <span style={{ fontSize: '1.2rem', fontWeight: '800', color: 'var(--text-main)' }}>Rs. {shiftData.systemCash}</span>
+            </div>
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', padding: '1rem', backgroundColor: 'rgba(255, 255, 255, 0.05)', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
+              <span style={{ fontSize: '1rem', color: 'var(--text-muted)' }}>Total Orders:</span>
+              <span style={{ fontSize: '1rem', fontWeight: 'bold', color: 'var(--text-main)' }}>{shiftData.totalOrders}</span>
+            </div>
+
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>Actual Drawer Cash (Rs.)</label>
+              <input 
+                type="number" 
+                value={drawerCashInput}
+                onChange={(e) => setDrawerCashInput(e.target.value)}
+                placeholder="Count your cash and enter here..."
+                style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '2px solid var(--glass-border)', backgroundColor: 'var(--bg)', color: 'var(--text-main)', fontSize: '1.5rem', fontWeight: '700', textAlign: 'right' }}
+                autoFocus
+              />
+            </div>
+
+            {drawerCashInput && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem', padding: '1rem', backgroundColor: 'rgba(255, 255, 255, 0.03)', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
+                <span style={{ fontSize: '1rem', color: 'var(--text-muted)' }}>Status:</span>
+                <span style={{ fontSize: '1.3rem', fontWeight: '800', color: (Number(drawerCashInput) - shiftData.systemCash) >= 0 ? (Number(drawerCashInput) === shiftData.systemCash ? '#a3e635' : '#facc15') : '#ef4444' }}>
+                  {Number(drawerCashInput) - shiftData.systemCash === 0 ? 'Exact Match' : 
+                   Number(drawerCashInput) - shiftData.systemCash > 0 ? `Excess: Rs. ${Number(drawerCashInput) - shiftData.systemCash}` : 
+                   `Shortage: Rs. ${Math.abs(Number(drawerCashInput) - shiftData.systemCash)}`}
+                </span>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <button onClick={() => setShowShiftModal(false)} style={{ flex: 1, padding: '1rem', backgroundColor: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-main)', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>Cancel</button>
+              <button onClick={submitShiftClose} style={{ flex: 2, padding: '1rem', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '800', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                Close & WhatsApp
               </button>
             </div>
           </div>
