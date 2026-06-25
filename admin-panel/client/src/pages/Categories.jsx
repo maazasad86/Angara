@@ -35,7 +35,7 @@ const CategoryFormModal = ({ onClose, onAdd }) => {
               type="text" 
               value={name} 
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Electronics"
+              placeholder="e.g. Burgers"
               required
               autoFocus
             />
