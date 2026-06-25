@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import Layout from '../components/Layout';
 import { 
@@ -12,6 +12,7 @@ import {
   Calendar,
   Grid
 } from 'lucide-react';
+import { SkeletonTable } from '../components/Skeleton';
 
 const Sales = () => {
   const [sales, setSales] = useState([]);
@@ -25,6 +26,14 @@ const Sales = () => {
   
   // Tabs
   const [activeTab, setActiveTab] = useState('itemized'); // itemized, transactions
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, categoryFilter, itemSearchQuery, dateFilter]);
 
   useEffect(() => {
     fetchData();
@@ -47,7 +56,7 @@ const Sales = () => {
   };
 
   // 1. Date Filter Logic
-  const getFilteredSalesByDate = () => {
+  const salesByDate = useMemo(() => {
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
     
@@ -64,12 +73,10 @@ const Sales = () => {
       }
       return true; // all
     });
-  };
-
-  const salesByDate = getFilteredSalesByDate();
+  }, [sales, dateFilter]);
 
   // 2. Aggregate Itemized Sales from Sales list
-  const getItemizedSales = () => {
+  const allItemizedSales = useMemo(() => {
     const itemsMap = {};
     
     salesByDate.forEach(sale => {
@@ -92,37 +99,59 @@ const Sales = () => {
     });
 
     return Object.values(itemsMap);
-  };
-
-  const allItemizedSales = getItemizedSales();
+  }, [salesByDate]);
 
   // 3. Filter Itemized Sales
-  const filteredItemizedSales = allItemizedSales.filter(item => {
-    const matchesCategory = categoryFilter === 'All' || item.categoryName === categoryFilter;
-    const matchesSearch = item.name.toLowerCase().includes(itemSearchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
-  });
+  const filteredItemizedSales = useMemo(() => {
+    return allItemizedSales.filter(item => {
+      const matchesCategory = categoryFilter === 'All' || item.categoryName === categoryFilter;
+      const matchesSearch = item.name.toLowerCase().includes(itemSearchQuery.toLowerCase());
+      return matchesCategory && matchesSearch;
+    });
+  }, [allItemizedSales, categoryFilter, itemSearchQuery]);
 
   // 4. Filter Transactions (Orders)
-  const filteredTransactions = salesByDate.filter(sale => {
-    // If category filter is applied, check if at least one item in sale matches the category
-    const matchesCategory = categoryFilter === 'All' || 
-      sale.items.some(item => item.categoryName === categoryFilter);
+  const filteredTransactions = useMemo(() => {
+    return salesByDate.filter(sale => {
+      // If category filter is applied, check if at least one item in sale matches the category
+      const matchesCategory = categoryFilter === 'All' || 
+        sale.items.some(item => item.categoryName === categoryFilter);
 
-    // If search filter is applied, check if at least one item matches search query
-    const matchesSearch = itemSearchQuery === '' || 
-      sale.items.some(item => item.name.toLowerCase().includes(itemSearchQuery.toLowerCase()));
+      // If search filter is applied, check if at least one item matches search query
+      const matchesSearch = itemSearchQuery === '' || 
+        sale.items.some(item => item.name.toLowerCase().includes(itemSearchQuery.toLowerCase()));
 
-    return matchesCategory && matchesSearch;
-  });
+      return matchesCategory && matchesSearch;
+    });
+  }, [salesByDate, categoryFilter, itemSearchQuery]);
 
   // 5. Calculate Metrics based on filtered date range
-  const totalRevenue = salesByDate.reduce((sum, s) => sum + s.totalAmount, 0);
-  const totalOrders = salesByDate.length;
-  const totalItemsSold = salesByDate.reduce((sum, s) => 
-    sum + s.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0
-  );
-  const averageOrderValue = totalOrders > 0 ? (totalRevenue / totalOrders) : 0;
+  const { totalRevenue, totalOrders, totalItemsSold, averageOrderValue } = useMemo(() => {
+    const revenue = salesByDate.reduce((sum, s) => sum + s.totalAmount, 0);
+    const orders = salesByDate.length;
+    const itemsSold = salesByDate.reduce((sum, s) => 
+      sum + s.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0
+    );
+    const avgOrderValue = orders > 0 ? (revenue / orders) : 0;
+    
+    return {
+      totalRevenue: revenue,
+      totalOrders: orders,
+      totalItemsSold: itemsSold,
+      averageOrderValue: avgOrderValue
+    };
+  }, [salesByDate]);
+
+  // Pagination logic
+  const paginatedItemizedSales = useMemo(() => {
+    return filteredItemizedSales.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  }, [filteredItemizedSales, currentPage]);
+  const totalItemizedPages = Math.ceil(filteredItemizedSales.length / itemsPerPage);
+
+  const paginatedTransactions = useMemo(() => {
+    return filteredTransactions.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  }, [filteredTransactions, currentPage]);
+  const totalTransactionPages = Math.ceil(filteredTransactions.length / itemsPerPage);
 
   return (
     <Layout>
@@ -274,9 +303,8 @@ const Sales = () => {
           {/* Tab Content */}
           <div style={styles.tabBody}>
             {loading ? (
-              <div style={styles.loadingContainer}>
-                <RefreshCw size={36} className="spin" style={{ color: 'var(--primary-yellow)', animation: 'spin 1.5s linear infinite' }} />
-                <p style={{ marginTop: '1rem', color: 'var(--text-muted)' }}>Loading sales data...</p>
+              <div style={{ padding: '2rem' }}>
+                <SkeletonTable rows={5} columns={6} />
               </div>
             ) : activeTab === 'itemized' ? (
               /* Itemized Sales View */
@@ -294,7 +322,7 @@ const Sales = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredItemizedSales.map((item, idx) => (
+                      {paginatedItemizedSales.map((item, idx) => (
                         <tr key={idx} style={styles.tr}>
                           <td style={{ ...styles.td, fontWeight: '700' }}>{item.name}</td>
                           <td style={styles.td}>
@@ -318,6 +346,14 @@ const Sales = () => {
                       ))}
                     </tbody>
                   </table>
+                  
+                  {totalItemizedPages > 1 && (
+                    <div style={styles.pagination}>
+                      <button disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} style={{ ...styles.pageBtn, opacity: currentPage === 1 ? 0.5 : 1 }}>Previous</button>
+                      <span style={styles.pageInfo}>Page {currentPage} of {totalItemizedPages}</span>
+                      <button disabled={currentPage === totalItemizedPages} onClick={() => setCurrentPage(p => p + 1)} style={{ ...styles.pageBtn, opacity: currentPage === totalItemizedPages ? 0.5 : 1 }}>Next</button>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div style={styles.emptyState}>
@@ -339,7 +375,7 @@ const Sales = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredTransactions.map((sale, idx) => {
+                      {paginatedTransactions.map((sale, idx) => {
                         const date = new Date(sale.createdAt);
                         const formattedDate = date.toLocaleDateString('en-US', {
                           year: 'numeric',
@@ -378,6 +414,14 @@ const Sales = () => {
                       })}
                     </tbody>
                   </table>
+                  
+                  {totalTransactionPages > 1 && (
+                    <div style={styles.pagination}>
+                      <button disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} style={{ ...styles.pageBtn, opacity: currentPage === 1 ? 0.5 : 1 }}>Previous</button>
+                      <span style={styles.pageInfo}>Page {currentPage} of {totalTransactionPages}</span>
+                      <button disabled={currentPage === totalTransactionPages} onClick={() => setCurrentPage(p => p + 1)} style={{ ...styles.pageBtn, opacity: currentPage === totalTransactionPages ? 0.5 : 1 }}>Next</button>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div style={styles.emptyState}>
@@ -397,16 +441,16 @@ const styles = {
   container: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '2rem',
+    gap: '1rem',
   },
   filterSection: {
-    padding: '1.5rem',
+    padding: '1rem 1.5rem',
   },
   filterHeader: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: '1.25rem',
+    marginBottom: '0.75rem',
     borderBottom: '1px solid var(--glass-border)',
     paddingBottom: '0.75rem',
   },
@@ -472,10 +516,10 @@ const styles = {
   metricsGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-    gap: '1.5rem',
+    gap: '1rem',
   },
   metricCard: {
-    padding: '1.5rem',
+    padding: '1rem 1.5rem',
     display: 'flex',
     alignItems: 'center',
     gap: '1.25rem',
@@ -516,7 +560,7 @@ const styles = {
     cursor: 'pointer',
   },
   tabBody: {
-    padding: '1.5rem',
+    padding: '1rem 1.5rem',
   },
   loadingContainer: {
     display: 'flex',
@@ -535,7 +579,7 @@ const styles = {
     textAlign: 'left',
   },
   th: {
-    padding: '1rem',
+    padding: '0.75rem 1rem',
     color: 'var(--text-muted)',
     fontWeight: '700',
     borderBottom: '2px solid var(--glass-border)',
@@ -546,7 +590,7 @@ const styles = {
     transition: 'background-color 0.2s ease',
   },
   td: {
-    padding: '1rem',
+    padding: '0.75rem 1rem',
     fontSize: '0.9rem',
     color: 'var(--text-main)',
   },
@@ -582,6 +626,29 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     padding: '4rem 0',
+  },
+  pagination: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    gap: '1rem',
+    marginTop: '1rem',
+    paddingTop: '1rem',
+    borderTop: '1px solid var(--glass-border)'
+  },
+  pageBtn: {
+    padding: '0.4rem 0.8rem',
+    borderRadius: '6px',
+    border: '1px solid var(--glass-border)',
+    backgroundColor: 'var(--glass)',
+    color: 'var(--text-main)',
+    cursor: 'pointer',
+    transition: 'opacity 0.2s'
+  },
+  pageInfo: {
+    fontSize: '0.85rem',
+    color: 'var(--text-muted)',
+    fontWeight: '600'
   }
 };
 

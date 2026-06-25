@@ -208,3 +208,31 @@ select option {
     transform: rotate(360deg);
   }
 }
+
+@keyframes fade-spin {
+  0% {
+    opacity: 0.15;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: .5;
+  }
+}
+
+.animate-fade-spin {
+  animation: fade-spin 1.2s linear infinite;
+}
+
+.skeleton {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  background-color: var(--glass-border);
+  border-radius: 8px;
+}

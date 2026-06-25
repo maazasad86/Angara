@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Layout from '../components/Layout';
 import ConfirmModal from '../components/ConfirmModal';
-import Spinner from '../components/Spinner';
+import { SkeletonGrid } from '../components/Skeleton';
 import { 
   Search, 
   Plus, 
@@ -181,7 +181,7 @@ const Deals = () => {
     return matchesCategory && matchesSearch;
   });
 
-  if (loading) return <Layout><Spinner /></Layout>;
+  if (loading) return <Layout><div style={{ padding: '2rem' }}><SkeletonGrid count={6} /></div></Layout>;
 
   return (
     <Layout>

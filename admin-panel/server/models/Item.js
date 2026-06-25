@@ -10,6 +10,9 @@ const ItemSchema = new mongoose.Schema({
         ref: 'Category',
         required: true
     },
+    subCategory: {
+        type: String
+    },
     price: {
         type: Number,
         default: 0  // 0 means item has variants

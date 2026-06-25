@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Layout from '../components/Layout';
-import Spinner from '../components/Spinner';
+import { SkeletonGrid } from '../components/Skeleton';
 import { Search, Plus, Minus, Trash2, Printer, ShoppingCart, Package, Tag } from 'lucide-react';
 
 const POS = () => {
@@ -150,7 +150,9 @@ const POS = () => {
 
           <div className="items-grid" style={styles.itemsGrid}>
             {loading ? (
-              <Spinner />
+              <div style={{ padding: '2rem' }}>
+                <SkeletonGrid count={12} />
+              </div>
             ) : displayItems.length > 0 ? (
               displayItems.map(item => {
                 const isDeal = !!item.items;

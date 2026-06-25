@@ -6,9 +6,9 @@ const CategorySchema = new mongoose.Schema({
         required: true,
         unique: true
     },
-    description: {
+    subCategories: [{
         type: String
-    },
+    }],
     createdAt: {
         type: Date,
         default: Date.now

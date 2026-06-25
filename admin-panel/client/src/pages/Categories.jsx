@@ -1,19 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Layout from '../components/Layout';
-import Spinner from '../components/Spinner';
+import { SkeletonTable } from '../components/Skeleton';
 import ConfirmModal from '../components/ConfirmModal';
 import { Plus, Edit2, Trash2, X, Check } from 'lucide-react';
 
 const CategoryFormModal = ({ onClose, onAdd }) => {
   const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
+  const [subCategoriesInput, setSubCategoriesInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    await onAdd({ name, description });
+    const subCategories = subCategoriesInput.split(',').map(s => s.trim()).filter(s => s);
+    await onAdd({ name, subCategories });
     setIsSubmitting(false);
   };
 
@@ -40,12 +41,12 @@ const CategoryFormModal = ({ onClose, onAdd }) => {
             />
           </div>
           <div style={styles.formGroup}>
-            <label style={styles.label}>Description</label>
+            <label style={styles.label}>Sub Categories (comma separated)</label>
             <input 
               type="text" 
-              value={description} 
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Tell us more about this category"
+              value={subCategoriesInput} 
+              onChange={(e) => setSubCategoriesInput(e.target.value)}
+              placeholder="e.g. Burgers, Pizzas, Drinks"
             />
           </div>
           <div style={styles.formActions}>
@@ -65,7 +66,7 @@ const Categories = () => {
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(null);
   const [editName, setEditName] = useState('');
-  const [editDescription, setEditDescription] = useState('');
+  const [editSubCategories, setEditSubCategories] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
 
@@ -84,9 +85,9 @@ const Categories = () => {
     }
   };
 
-  const handleAdd = async ({ name, description }) => {
+  const handleAdd = async ({ name, subCategories }) => {
     try {
-      await axios.post('http://localhost:5000/api/categories', { name, description });
+      await axios.post('http://localhost:5000/api/categories', { name, subCategories });
       setShowModal(false);
       fetchCategories();
     } catch (err) {
@@ -112,14 +113,15 @@ const Categories = () => {
   const handleEdit = (category) => {
     setIsEditing(category._id);
     setEditName(category.name);
-    setEditDescription(category.description);
+    setEditSubCategories((category.subCategories || []).join(', '));
   };
 
   const handleUpdate = async (id) => {
     try {
+      const subCategories = editSubCategories.split(',').map(s => s.trim()).filter(s => s);
       await axios.put(`http://localhost:5000/api/categories/${id}`, { 
         name: editName, 
-        description: editDescription 
+        subCategories 
       });
       setIsEditing(null);
       fetchCategories();
@@ -142,13 +144,15 @@ const Categories = () => {
 
       <div className="glass-card" style={styles.tableCard}>
         {loading ? (
-          <Spinner />
+          <div style={{ padding: '2rem' }}>
+            <SkeletonTable rows={4} columns={3} />
+          </div>
         ) : categories.length > 0 ? (
           <table style={styles.table}>
             <thead>
               <tr>
                 <th style={styles.th}>NAME</th>
-                <th style={styles.th}>DESCRIPTION</th>
+                <th style={styles.th}>SUB CATEGORIES</th>
                 <th style={styles.th}>DATE</th>
                 <th style={styles.th}>ACTIONS</th>
               </tr>
@@ -170,12 +174,17 @@ const Categories = () => {
                   <td style={styles.td}>
                     {isEditing === cat._id ? (
                       <input 
-                        value={editDescription} 
-                        onChange={(e) => setEditDescription(e.target.value)}
+                        value={editSubCategories} 
+                        onChange={(e) => setEditSubCategories(e.target.value)}
                         style={styles.inlineInput}
                       />
                     ) : (
-                      cat.description || '-'
+                      <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                        {(cat.subCategories || []).map((sub, i) => (
+                          <span key={i} style={styles.subCategoryBadge}>{sub}</span>
+                        ))}
+                        {(!cat.subCategories || cat.subCategories.length === 0) && '-'}
+                      </div>
                     )}
                   </td>
                   <td style={styles.td}>
@@ -277,6 +286,14 @@ const styles = {
   catName: {
     fontWeight: '600',
     color: 'var(--primary-yellow)',
+  },
+  subCategoryBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    color: 'var(--text-main)',
+    padding: '0.2rem 0.5rem',
+    borderRadius: '6px',
+    fontSize: '0.75rem',
+    fontWeight: '600'
   },
   actions: {
     display: 'flex',

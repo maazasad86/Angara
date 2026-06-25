@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Layout from '../components/Layout';
 import ConfirmModal from '../components/ConfirmModal';
-import Spinner from '../components/Spinner';
-import { Plus, Edit2, Trash2, X, Upload, Package } from 'lucide-react';
+import { SkeletonGrid } from '../components/Skeleton';
+import { Plus, Edit2, Trash2, X, Upload, Package, MoreVertical } from 'lucide-react';
 
 const Items = () => {
   const [items, setItems] = useState([]);
@@ -12,10 +12,13 @@ const Items = () => {
   
   // Form State
   const [showModal, setShowModal] = useState(false);
+  const [deleteId, setDeleteId] = useState(null);
+  const [showDropdown, setShowDropdown] = useState(null);
   const [isEditing, setIsEditing] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
     category: '',
+    subCategory: '',
     price: '',
     image: null
   });
@@ -64,6 +67,7 @@ const Items = () => {
     const data = new FormData();
     data.append('name', formData.name);
     data.append('category', formData.category);
+    data.append('subCategory', formData.subCategory);
     data.append('price', formData.price);
     if (formData.image) {
       data.append('image', formData.image);
@@ -83,7 +87,7 @@ const Items = () => {
   };
 
   const resetForm = () => {
-    setFormData({ name: '', category: '', price: '', image: null });
+    setFormData({ name: '', category: '', subCategory: '', price: '', image: null });
     setImagePreview(null);
     setShowModal(false);
     setIsEditing(null);
@@ -94,6 +98,7 @@ const Items = () => {
     setFormData({
       name: item.name,
       category: item.category?._id || '',
+      subCategory: item.subCategory || '',
       price: item.price,
       image: null
     });
@@ -170,25 +175,54 @@ const Items = () => {
 
       <div style={styles.grid}>
         {loading ? (
-          <Spinner />
+          <div style={{ padding: '2rem' }}>
+            <SkeletonGrid count={8} />
+          </div>
         ) : filteredItems.length > 0 ? (
           filteredItems.map((item) => (
-            <div key={item._id} className="glass-card" style={styles.itemCard}>
-              <div style={styles.imageContainer}>
-                <img src={item.image} alt={item.name} style={styles.itemImage} />
-                <div style={styles.itemCategoryBadge}>{item.category?.name || 'No Category'}</div>
+            <div key={item._id} className="glass-card hover-scale" style={styles.itemCard}>
+              <div style={styles.menuDotContainer}>
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowDropdown(showDropdown === item._id ? null : item._id);
+                  }} 
+                  style={styles.menuDotBtn}
+                >
+                  <MoreVertical size={16} />
+                </button>
+                {showDropdown === item._id && (
+                  <div style={styles.dropdownMenu}>
+                    <button onClick={() => { handleEdit(item); setShowDropdown(null); }} style={styles.dropdownItem}>
+                      <Edit2 size={14} style={{ marginRight: '0.4rem' }}/> Edit
+                    </button>
+                    <button onClick={() => { confirmDelete(item._id); setShowDropdown(null); }} style={{...styles.dropdownItem, color: 'var(--accent-red)'}}>
+                      <Trash2 size={14} style={{ marginRight: '0.4rem' }}/> Delete
+                    </button>
+                  </div>
+                )}
               </div>
-              <div style={styles.itemDetails}>
-                <h3 style={styles.itemName}>{item.name}</h3>
-                <p style={styles.itemPrice}>${item.price}</p>
-                <div style={styles.itemActions}>
-                  <button onClick={() => handleEdit(item)} style={styles.iconBtnEdit}>
-                    <Edit2 size={18} />
-                  </button>
-                  <button onClick={() => confirmDelete(item._id)} style={styles.iconBtnDelete}>
-                    <Trash2 size={18} />
-                  </button>
+
+              <div style={styles.imageContainer}>
+                {item.image ? (
+                  <img src={item.image} alt={item.name} style={styles.itemImage} />
+                ) : (
+                  <div style={styles.placeholderContainer}>
+                    <Package size={32} color="var(--text-muted)" opacity={0.5} />
+                  </div>
+                )}
+                <div style={styles.itemCategoryBadge}>
+                  {item.category?.name || 'No Category'}
+                  {item.subCategory && <span style={{ opacity: 0.8, fontWeight: 'normal', marginLeft: '4px' }}>| {item.subCategory}</span>}
                 </div>
+              </div>
+
+              <div style={styles.itemHeaderContainer}>
+                <div style={styles.itemName}>{item.name}</div>
+              </div>
+
+              <div style={styles.itemPriceContainer}>
+                <div style={styles.itemPrice}>Rs. {item.price}</div>
               </div>
             </div>
           ))
@@ -237,6 +271,22 @@ const Items = () => {
                       ))}
                     </select>
                   </div>
+
+                  {formData.category && categories.find(c => c._id === formData.category)?.subCategories?.length > 0 && (
+                    <div style={styles.formGroup}>
+                      <label>Sub Category</label>
+                      <select 
+                        name="subCategory" 
+                        value={formData.subCategory} 
+                        onChange={handleInputChange}
+                      >
+                        <option value="">Select Sub Category</option>
+                        {categories.find(c => c._id === formData.category).subCategories.map((sub, idx) => (
+                          <option key={idx} value={sub}>{sub}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
 
                   <div style={styles.formGroup}>
                     <label>Price (Rs.)</label>
@@ -327,75 +377,128 @@ const styles = {
   },
   grid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+    gridTemplateColumns: 'repeat(4, 1fr)',
     gap: '1.5rem',
   },
   itemCard: {
-    overflow: 'hidden',
-    transition: 'all 0.3s ease',
+    backgroundColor: 'var(--glass)',
+    borderRadius: '16px',
+    border: '1px solid var(--glass-border)',
+    padding: '1.25rem',
     display: 'flex',
     flexDirection: 'column',
+    position: 'relative',
+    height: '100%',
+    boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
+    transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+    boxSizing: 'border-box',
+    overflow: 'hidden',
+  },
+  menuDotContainer: {
+    position: 'absolute',
+    top: '1rem',
+    right: '1rem',
+    zIndex: 10,
+  },
+  menuDotBtn: {
+    backgroundColor: 'var(--glass)',
+    border: '1px solid var(--glass-border)',
+    borderRadius: '50%',
+    width: '32px',
+    height: '32px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+    color: 'var(--text-main)',
+  },
+  dropdownMenu: {
+    position: 'absolute',
+    top: '2.2rem',
+    right: '0',
+    backgroundColor: 'var(--bg-card)',
+    border: '1px solid var(--glass-border)',
+    borderRadius: '8px',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
+    display: 'flex',
+    flexDirection: 'column',
+    width: '110px',
+    zIndex: 20,
+    overflow: 'hidden',
+  },
+  dropdownItem: {
+    padding: '0.6rem 0.8rem',
+    display: 'flex',
+    alignItems: 'center',
+    color: 'var(--text-main)',
+    fontSize: '0.8rem',
+    fontWeight: '600',
+    borderBottom: '1px solid var(--glass-border)',
+    background: 'none',
+    width: '100%',
+    textAlign: 'left',
+    cursor: 'pointer',
   },
   imageContainer: {
-    position: 'relative',
-    height: '160px',
+    aspectRatio: '16/9',
     width: '100%',
+    borderRadius: '12px',
+    overflow: 'hidden',
+    marginBottom: '1rem',
+    backgroundColor: 'rgba(0,0,0,0.1)',
+    position: 'relative',
   },
   itemImage: {
     width: '100%',
     height: '100%',
     objectFit: 'cover',
   },
+  placeholderContainer: {
+    width: '100%',
+    height: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'var(--glass)',
+  },
   itemCategoryBadge: {
     position: 'absolute',
-    top: '1rem',
-    right: '1rem',
-    padding: '0.4rem 0.8rem',
+    top: '0.5rem',
+    left: '0.5rem',
+    padding: '0.3rem 0.7rem',
     backgroundColor: 'var(--primary-yellow)',
     color: '#000',
     borderRadius: '20px',
-    fontSize: '0.75rem',
-    fontWeight: '700',
+    fontSize: '0.7rem',
+    fontWeight: '800',
   },
-  itemDetails: {
-    padding: '1rem',
+  itemHeaderContainer: {
+    marginBottom: '1rem',
+    width: '100%',
+    paddingRight: '2rem',
   },
   itemName: {
-    fontSize: '1rem',
-    fontWeight: '700',
     color: 'var(--text-main)',
-    marginBottom: '0.4rem',
+    fontWeight: '800',
+    fontSize: '1.2rem',
+    letterSpacing: '-0.5px',
     whiteSpace: 'nowrap',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
   },
-  itemPrice: {
-    fontSize: '0.95rem',
-    fontWeight: '600',
-    color: 'var(--primary-yellow)',
-    marginBottom: '0.8rem',
-  },
-  itemActions: {
+  itemPriceContainer: {
     display: 'flex',
-    gap: '1rem',
-    borderTop: '1px solid var(--glass-border)',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    width: '100%',
+    marginTop: 'auto',
     paddingTop: '1rem',
+    borderTop: '1px solid var(--glass-border)',
   },
-  iconBtnEdit: { 
-    color: 'var(--text-muted)',
-    padding: '0.4rem',
-    cursor: 'pointer',
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconBtnDelete: { 
-    color: 'var(--accent-red)',
-    padding: '0.4rem',
-    cursor: 'pointer',
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
+  itemPrice: {
+    color: 'var(--primary-yellow)',
+    fontWeight: '800',
+    fontSize: '1.25rem',
   },
   noItems: {
     gridColumn: '1 / -1',

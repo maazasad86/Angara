@@ -17,7 +17,7 @@ router.get('/', async (req, res) => {
 // Add an item
 router.post('/', upload.single('image'), async (req, res) => {
     try {
-        const { name, category, price, variants } = req.body;
+        const { name, category, subCategory, price, variants } = req.body;
 
         if (!req.file) {
             return res.status(400).json({ message: 'Image is required' });
@@ -34,7 +34,7 @@ router.post('/', upload.single('image'), async (req, res) => {
         }
 
         const newItem = new Item({ 
-            name, category, 
+            name, category, subCategory,
             price: parsedVariants.length > 0 ? 0 : Number(price), 
             image: imageUrl,
             variants: parsedVariants
