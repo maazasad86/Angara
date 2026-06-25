@@ -58,7 +58,7 @@ const CategoryFormModal = ({ onClose, onAdd, existingCategories = [] }) => {
           <div style={styles.formActions}>
             <button type="button" onClick={onClose} className="btn-secondary" style={styles.cancelBtn}>Cancel</button>
             <button type="submit" className="btn-primary" style={styles.submitBtn} disabled={isSubmitting}>
-              {isSubmitting ? 'Creating...' : 'Create Category'}
+              {isSubmitting ? 'Saving...' : 'Save Category'}
             </button>
           </div>
         </form>
@@ -93,11 +93,26 @@ const Categories = () => {
 
   const handleAdd = async ({ name, subCategories }) => {
     try {
-      await axios.post('http://localhost:5000/api/categories', { name, subCategories });
+      // Check if the category already exists
+      const existing = categories.find(c => c.name.toLowerCase() === name.toLowerCase());
+      
+      if (existing) {
+        // Merge existing subcategories with new ones, avoiding duplicates
+        const mergedSubCategories = Array.from(new Set([...(existing.subCategories || []), ...subCategories]));
+        
+        await axios.put(`http://localhost:5000/api/categories/${existing._id}`, { 
+          name: existing.name, 
+          subCategories: mergedSubCategories 
+        });
+      } else {
+        // Create new category
+        await axios.post('http://localhost:5000/api/categories', { name, subCategories });
+      }
+      
       setShowModal(false);
       fetchCategories();
     } catch (err) {
-      alert(err.response?.data?.message || 'Error adding category');
+      alert(err.response?.data?.message || 'Error saving category');
     }
   };
 
