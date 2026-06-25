@@ -156,78 +156,47 @@ const Sales = () => {
   return (
     <Layout>
       <div style={styles.container}>
-        {/* Top Actions & Filters */}
+        {/* Compact Actions & Filters */}
         <div style={styles.filterSection} className="glass-card">
-          <div style={styles.filterHeader}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Filter size={18} style={{ color: 'var(--primary-yellow)' }} />
-              <h3 style={{ fontWeight: '700', fontSize: '1.1rem' }}>Filter Records</h3>
-            </div>
-            <button onClick={fetchData} style={styles.refreshBtn}>
-              <RefreshCw size={16} /> Refresh
-            </button>
-          </div>
-          
-          <div style={styles.filtersGrid}>
+          <div style={styles.filtersRow}>
             {/* Search Item */}
-            <div style={styles.filterGroup}>
-              <label style={styles.filterLabel}>Search Item Name</label>
-              <div style={styles.inputIconContainer}>
-                <Search size={18} style={styles.inputIcon} />
-                <input 
-                  type="text" 
-                  placeholder="e.g. Burger, Deal 1..." 
-                  value={itemSearchQuery}
-                  onChange={(e) => setItemSearchQuery(e.target.value)}
-                  style={styles.inputField}
-                />
-              </div>
-            </div>
-
-            {/* Category Filter */}
-            <div style={styles.filterGroup}>
-              <label style={styles.filterLabel}>Category</label>
-              <div style={styles.inputIconContainer}>
-                <Grid size={18} style={styles.inputIcon} />
-                <select 
-                  value={categoryFilter}
-                  onChange={(e) => setCategoryFilter(e.target.value)}
-                  style={styles.selectField}
-                >
-                  <option value="All">All Categories</option>
-                  <option value="Deals">Deals</option>
-                  {categories.map(cat => (
-                    <option key={cat._id} value={cat.name}>{cat.name}</option>
-                  ))}
-                </select>
-              </div>
+            <div style={styles.inputIconContainer}>
+              <Search size={16} style={styles.inputIcon} />
+              <input 
+                type="text" 
+                placeholder="Search items..." 
+                value={itemSearchQuery}
+                onChange={(e) => setItemSearchQuery(e.target.value)}
+                style={styles.compactInput}
+              />
             </div>
 
             {/* Date Range Selector Presets */}
-            <div style={styles.filterGroup}>
-              <label style={styles.filterLabel}>Date Range</label>
-              <div style={styles.datePills}>
-                {[
-                  { value: 'all', label: 'All Time' },
-                  { value: 'today', label: 'Today' },
-                  { value: '7days', label: '7 Days' },
-                  { value: '30days', label: '30 Days' },
-                ].map(preset => (
-                  <button
-                    key={preset.value}
-                    onClick={() => setDateFilter(preset.value)}
-                    style={{
-                      ...styles.datePill,
-                      backgroundColor: dateFilter === preset.value ? 'var(--primary-yellow)' : 'rgba(255, 255, 255, 0.03)',
-                      color: dateFilter === preset.value ? '#000000' : 'var(--text-muted)',
-                      borderColor: dateFilter === preset.value ? 'var(--primary-yellow)' : 'var(--glass-border)'
-                    }}
-                  >
-                    {preset.label}
-                  </button>
-                ))}
-              </div>
+            <div style={styles.datePills}>
+              {[
+                { value: 'all', label: 'All Time' },
+                { value: 'today', label: 'Today' },
+                { value: '7days', label: '7 Days' },
+                { value: '30days', label: '30 Days' },
+              ].map(preset => (
+                <button
+                  key={preset.value}
+                  onClick={() => setDateFilter(preset.value)}
+                  style={{
+                    ...styles.datePill,
+                    backgroundColor: dateFilter === preset.value ? 'var(--primary-yellow)' : 'rgba(255, 255, 255, 0.03)',
+                    color: dateFilter === preset.value ? '#000000' : 'var(--text-muted)',
+                    borderColor: dateFilter === preset.value ? 'var(--primary-yellow)' : 'var(--glass-border)'
+                  }}
+                >
+                  {preset.label}
+                </button>
+              ))}
             </div>
+
+            <button onClick={fetchData} style={styles.refreshBtn}>
+              <RefreshCw size={16} />
+            </button>
           </div>
         </div>
 
@@ -444,72 +413,57 @@ const styles = {
     gap: '1rem',
   },
   filterSection: {
-    padding: '1rem 1.5rem',
+    padding: '0.75rem 1rem',
   },
-  filterHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '0.75rem',
-    borderBottom: '1px solid var(--glass-border)',
-    paddingBottom: '0.75rem',
-  },
-  refreshBtn: {
+  filtersRow: {
     display: 'flex',
     alignItems: 'center',
-    gap: '0.4rem',
-    fontSize: '0.85rem',
-    color: 'var(--text-muted)',
-    cursor: 'pointer',
-    padding: '0.4rem 0.8rem',
-    borderRadius: '8px',
-    border: '1px solid var(--glass-border)',
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
-    transition: 'all 0.3s ease',
-  },
-  filtersGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-    gap: '1.5rem',
-  },
-  filterGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.5rem',
-  },
-  filterLabel: {
-    fontSize: '0.85rem',
-    fontWeight: '600',
-    color: 'var(--text-muted)',
+    flexWrap: 'wrap',
+    gap: '1rem',
   },
   inputIconContainer: {
     position: 'relative',
     display: 'flex',
     alignItems: 'center',
+    flex: 1,
+    minWidth: '200px',
   },
   inputIcon: {
     position: 'absolute',
-    left: '1rem',
+    left: '0.75rem',
     color: 'var(--text-muted)',
   },
-  inputField: {
-    paddingLeft: '2.75rem',
-  },
-  selectField: {
-    paddingLeft: '2.75rem',
-    cursor: 'pointer',
+  compactInput: {
+    width: '100%',
+    padding: '0.5rem 1rem 0.5rem 2.25rem',
+    borderRadius: '8px',
+    border: '1px solid var(--glass-border)',
+    backgroundColor: 'var(--glass)',
+    color: 'var(--text-main)',
+    fontSize: '0.85rem',
   },
   datePills: {
     display: 'flex',
     gap: '0.4rem',
-    flexWrap: 'wrap',
   },
   datePill: {
-    padding: '0.7rem 0.9rem',
-    borderRadius: '10px',
+    padding: '0.5rem 0.75rem',
+    borderRadius: '8px',
     border: '1px solid',
-    fontSize: '0.85rem',
+    fontSize: '0.8rem',
     fontWeight: '600',
+    cursor: 'pointer',
+    transition: 'all 0.3s ease',
+  },
+  refreshBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '0.5rem',
+    borderRadius: '8px',
+    border: '1px solid var(--glass-border)',
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    color: 'var(--text-muted)',
     cursor: 'pointer',
     transition: 'all 0.3s ease',
   },
