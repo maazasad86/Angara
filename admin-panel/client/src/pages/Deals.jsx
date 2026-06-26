@@ -29,6 +29,7 @@ const Deals = () => {
 
   // Search & Filter state for item selection
   const [activeCategory, setActiveCategory] = useState('All');
+  const [activeSubCategory, setActiveSubCategory] = useState('All');
   const [itemSearchQuery, setItemSearchQuery] = useState('');
 
   // Deal state
@@ -139,9 +140,6 @@ const Deals = () => {
       item.variants.forEach(v => {
         initialQuantities[v.name] = 0;
       });
-      if (item.variants.length > 0) {
-        initialQuantities[item.variants[0].name] = 1;
-      }
       setVariantQuantities(initialQuantities);
       setShowItemVariantModal(true);
       return;
@@ -216,8 +214,9 @@ const Deals = () => {
 
   const filteredItems = items.filter(item => {
     const matchesCategory = activeCategory === 'All' || item.category?.name === activeCategory;
+    const matchesSubCategory = activeSubCategory === 'All' || item.subCategory === activeSubCategory;
     const matchesSearch = item.name.toLowerCase().includes(itemSearchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
+    return matchesCategory && matchesSubCategory && matchesSearch;
   });
 
   if (loading) return <Layout><div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '4rem', width: '100%' }}><Spinner size={40} color="var(--primary-yellow)" /></div></Layout>;
@@ -227,10 +226,10 @@ const Deals = () => {
       {!isCreating && (
         <div style={styles.header}>
           <div style={styles.headerInfo}>
-            <Tag size={28} style={{ color: 'var(--primary-yellow)' }} />
+            <Tag size={20} style={{ color: 'var(--primary-yellow)' }} />
             <div>
-              <h2 style={{ fontSize: '1.5rem', fontWeight: '800' }}>Deals Management</h2>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Create and manage combo offers</p>
+              <h2 style={{ fontSize: '1.3rem', fontWeight: '800' }}>Deals Management</h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Create and manage combo offers</p>
             </div>
           </div>
           <button onClick={handleCreateNew} className="btn-primary" style={styles.createBtn}>
@@ -333,7 +332,7 @@ const Deals = () => {
 
               <div style={styles.categoryTabs}>
                 <button 
-                  onClick={() => setActiveCategory('All')}
+                  onClick={() => { setActiveCategory('All'); setActiveSubCategory('All'); }}
                   style={{
                     ...styles.tab,
                     backgroundColor: activeCategory === 'All' ? 'var(--primary-yellow)' : 'var(--glass)',
@@ -345,7 +344,7 @@ const Deals = () => {
                 {categories.map(cat => (
                   <button 
                     key={cat._id}
-                    onClick={() => setActiveCategory(cat.name)}
+                    onClick={() => { setActiveCategory(cat.name); setActiveSubCategory('All'); }}
                     style={{
                       ...styles.tab,
                       backgroundColor: activeCategory === cat.name ? 'var(--primary-yellow)' : 'var(--glass)',
@@ -356,6 +355,43 @@ const Deals = () => {
                   </button>
                 ))}
               </div>
+
+              {activeCategory !== 'All' && (
+                (() => {
+                  const currentCat = categories.find(cat => cat.name === activeCategory);
+                  const subCats = currentCat?.subCategories || [];
+                  if (subCats.length === 0) return null;
+                  return (
+                    <div style={styles.subCategoryTabs}>
+                      <button
+                        onClick={() => setActiveSubCategory('All')}
+                        style={{
+                          ...styles.subTab,
+                          backgroundColor: activeSubCategory === 'All' ? 'var(--primary-yellow)' : 'var(--glass)',
+                          color: activeSubCategory === 'All' ? '#000' : 'var(--text-main)',
+                          border: '1px solid var(--glass-border)',
+                        }}
+                      >
+                        All Option
+                      </button>
+                      {subCats.map((sub, i) => (
+                        <button
+                          key={i}
+                          onClick={() => setActiveSubCategory(sub)}
+                          style={{
+                            ...styles.subTab,
+                            backgroundColor: activeSubCategory === sub ? 'var(--primary-yellow)' : 'var(--glass)',
+                            color: activeSubCategory === sub ? '#000' : 'var(--text-main)',
+                            border: '1px solid var(--glass-border)',
+                          }}
+                        >
+                          {sub.includes(' / ') ? sub.replace(' / ', ' ➔ ') : sub}
+                        </button>
+                      ))}
+                    </div>
+                  );
+                })()
+              )}
             </div>
 
             <div className="items-grid" style={styles.itemsGridSmall}>
@@ -642,7 +678,7 @@ const styles = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: '2rem',
+    marginBottom: '1.25rem',
   },
   headerInfo: {
     display: 'flex',
@@ -711,8 +747,11 @@ const styles = {
   
   creatorContainer: {
     display: 'flex',
-    gap: '2rem',
-    height: 'calc(100vh - 200px)',
+    gap: '1.25rem',
+    height: 'calc(100vh - 120px)',
+    width: '100%',
+    maxWidth: '100%',
+    minWidth: 0,
   },
   itemsSide: {
     flex: 1,
@@ -720,6 +759,7 @@ const styles = {
     flexDirection: 'column',
     gap: '1.5rem',
     overflow: 'hidden',
+    minWidth: 0,
   },
   selectorHeader: {
     display: 'flex',
@@ -756,6 +796,25 @@ const styles = {
     fontSize: '0.8rem',
     fontWeight: '600',
     whiteSpace: 'nowrap',
+    border: '1px solid var(--glass-border)',
+    cursor: 'pointer',
+  },
+  subTab: {
+    padding: '0.3rem 0.6rem',
+    borderRadius: '6px',
+    fontSize: '0.72rem',
+    fontWeight: '600',
+    whiteSpace: 'nowrap',
+    border: '1px solid var(--glass-border)',
+    cursor: 'pointer',
+  },
+  subCategoryTabs: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '0.35rem',
+    marginTop: '0.5rem',
+    width: '100%',
+    minWidth: 0,
   },
   itemsGridSmall: {
     flex: 1,
@@ -779,7 +838,7 @@ const styles = {
     aspectRatio: '4/3',
     borderRadius: '8px',
     overflow: 'hidden',
-    backgroundColor: 'rgba(0,0,0,0.15)',
+    backgroundColor: '#e5e7eb',
   },
   itemImage: {
     width: '100%',
@@ -803,12 +862,11 @@ const styles = {
     alignItems: 'center',
   },
   itemName: {
-    fontSize: '0.9rem',
-    fontWeight: '700',
+    fontSize: '0.85rem',
+    fontWeight: '600',
     color: 'var(--text-main)',
-    whiteSpace: 'nowrap',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
+    lineHeight: '1.2',
+    wordBreak: 'break-word',
   },
   addBtn: {
     width: '28px',
@@ -828,7 +886,7 @@ const styles = {
     flexDirection: 'column',
     gap: '0.8rem',
     background: 'var(--bg-card)',
-    height: 'calc(100vh - 200px)',
+    height: 'calc(100vh - 120px)',
     overflowY: 'auto',
     boxSizing: 'border-box',
     paddingRight: '0.5rem',

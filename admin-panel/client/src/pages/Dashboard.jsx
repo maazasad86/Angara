@@ -12,7 +12,7 @@ const Dashboard = () => {
   });
   const [recentItems, setRecentItems] = useState([]);
   const [loading, setLoading] = useState(true);
-  
+
   // Business Summary State
   const [businessSummary, setBusinessSummary] = useState({
     totalSales: 0,
@@ -54,7 +54,7 @@ const Dashboard = () => {
       // Sort items by createdAt descending and take top 5
       const sortedItems = [...items].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 5);
       setRecentItems(sortedItems);
-      
+
       setLoading(false);
     } catch (err) {
       console.error('Error fetching dashboard data:', err);
@@ -67,21 +67,21 @@ const Dashboard = () => {
       alert("Please enter both amount and description.");
       return;
     }
-    
+
     try {
       await axios.post('http://localhost:5000/api/expenses', {
         amount: expenseAmount,
         description: expenseDesc
       });
-      
+
       // Refresh Data
       fetchDashboardData();
-      
+
       // Close and clear
       setShowExpenseModal(false);
       setExpenseAmount('');
       setExpenseDesc('');
-      
+
     } catch (err) {
       alert("Failed to add expense: " + err.message);
     }
@@ -105,16 +105,16 @@ const Dashboard = () => {
           <div className="glass-card" style={{ padding: '1.5rem', marginBottom: '2rem', borderLeft: '4px solid var(--primary-yellow)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
               <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0, color: 'var(--text-main)' }}>
-                Aaj ka Dhanda (Today's Business)
+                Today's Business
               </h2>
-              <button 
+              <button
                 onClick={() => setShowExpenseModal(true)}
                 style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '0.6rem 1rem', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
               >
                 Add Expense (Rozana Kharcha)
               </button>
             </div>
-            
+
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
               <div style={{ padding: '1rem', backgroundColor: 'rgba(74, 222, 128, 0.05)', borderRadius: '8px', border: '1px solid rgba(74, 222, 128, 0.2)' }}>
                 <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem' }}>Total Sales</p>
@@ -151,7 +151,7 @@ const Dashboard = () => {
                 <Activity color="var(--primary-yellow)" />
                 <h3 style={styles.cardTitle}>Recently Added Items</h3>
               </div>
-              
+
               <div style={styles.placeholderChart}>
                 <div style={{ overflowX: 'auto' }}>
                   <table style={styles.table}>
@@ -169,10 +169,10 @@ const Dashboard = () => {
                         recentItems.map((item) => (
                           <tr key={item._id} style={styles.tr}>
                             <td style={styles.td}>
-                              <img 
-                                src={item.image} 
-                                alt={item.name} 
-                                style={{ width: '40px', height: '40px', borderRadius: '8px', objectFit: 'cover' }} 
+                              <img
+                                src={item.image}
+                                alt={item.name}
+                                style={{ width: '40px', height: '40px', borderRadius: '8px', objectFit: 'cover' }}
                               />
                             </td>
                             <td style={styles.td}>{item.name}</td>
@@ -206,11 +206,11 @@ const Dashboard = () => {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                   <h2 style={{ color: 'var(--text-main)', fontSize: '1.3rem', margin: 0 }}>Add Daily Expense</h2>
                 </div>
-                
+
                 <div style={{ marginBottom: '1.2rem' }}>
                   <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>Amount (Rs.)</label>
-                  <input 
-                    type="number" 
+                  <input
+                    type="number"
                     value={expenseAmount}
                     onChange={(e) => setExpenseAmount(e.target.value)}
                     placeholder="e.g. 200"
@@ -221,8 +221,8 @@ const Dashboard = () => {
 
                 <div style={{ marginBottom: '2rem' }}>
                   <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>Description</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     value={expenseDesc}
                     onChange={(e) => setExpenseDesc(e.target.value)}
                     placeholder="e.g. Ice, Sabzi, Rider Pay"

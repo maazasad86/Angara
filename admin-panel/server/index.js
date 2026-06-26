@@ -54,4 +54,5 @@ mongoose.connect(process.env.MONGO_URI, {
         if (err.message.includes('authentication failed')) {
             console.error('TIP: Check your MONGO_URI username and password in .env');
         }
-    });
+    }); // triggered restart
+

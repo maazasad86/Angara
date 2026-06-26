@@ -9,7 +9,7 @@ const Items = () => {
   const [items, setItems] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
-  
+
   // Form State
   const [showModal, setShowModal] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
@@ -24,7 +24,7 @@ const Items = () => {
     variants: []
   });
   const [imagePreview, setImagePreview] = useState(null);
-  
+
   // Confirm Modal State
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false,
@@ -141,7 +141,7 @@ const Items = () => {
   const handleDelete = async () => {
     const id = confirmModal.itemId;
     if (!id) return;
-    
+
     console.log('handleDelete clicked for ID:', id);
     try {
       const response = await axios.delete(`http://localhost:5000/api/items/${id}`);
@@ -154,11 +154,14 @@ const Items = () => {
   };
 
   const [activeCategory, setActiveCategory] = useState('All');
+  const [activeSubCategory, setActiveSubCategory] = useState('All');
 
-  // Filter items based on activeCategory
-  const filteredItems = items.filter(item => 
-    activeCategory === 'All' || item.category?.name === activeCategory
-  );
+  // Filter items based on activeCategory and activeSubCategory
+  const filteredItems = items.filter(item => {
+    const matchesCategory = activeCategory === 'All' || item.category?.name === activeCategory;
+    const matchesSubCategory = activeSubCategory === 'All' || item.subCategory === activeSubCategory;
+    return matchesCategory && matchesSubCategory;
+  });
 
   // Group filteredItems by subCategory
   const groupedItems = useMemo(() => {
@@ -207,8 +210,8 @@ const Items = () => {
       </div>
 
       <div style={styles.tabsContainer}>
-        <button 
-          onClick={() => setActiveCategory('All')}
+        <button
+          onClick={() => { setActiveCategory('All'); setActiveSubCategory('All'); }}
           style={{
             ...styles.tab,
             backgroundColor: activeCategory === 'All' ? 'var(--primary-yellow)' : 'var(--glass)',
@@ -218,9 +221,9 @@ const Items = () => {
           All
         </button>
         {categories.map(cat => (
-          <button 
+          <button
             key={cat._id}
-            onClick={() => setActiveCategory(cat.name)}
+            onClick={() => { setActiveCategory(cat.name); setActiveSubCategory('All'); }}
             style={{
               ...styles.tab,
               backgroundColor: activeCategory === cat.name ? 'var(--primary-yellow)' : 'var(--glass)',
@@ -231,6 +234,41 @@ const Items = () => {
           </button>
         ))}
       </div>
+
+      {activeCategory !== 'All' && (
+        (() => {
+          const currentCat = categories.find(cat => cat.name === activeCategory);
+          const subCats = currentCat?.subCategories || [];
+          if (subCats.length === 0) return null;
+          return (
+            <div style={styles.subTabsContainer}>
+              <button
+                onClick={() => setActiveSubCategory('All')}
+                style={{
+                  ...styles.subTab,
+                  backgroundColor: activeSubCategory === 'All' ? 'var(--primary-yellow)' : 'var(--glass)',
+                  color: activeSubCategory === 'All' ? '#000' : 'var(--text-main)',
+                }}
+              >
+                All Option
+              </button>
+              {subCats.map((sub, i) => (
+                <button
+                  key={i}
+                  onClick={() => setActiveSubCategory(sub)}
+                  style={{
+                    ...styles.subTab,
+                    backgroundColor: activeSubCategory === sub ? 'var(--primary-yellow)' : 'var(--glass)',
+                    color: activeSubCategory === sub ? '#000' : 'var(--text-main)',
+                  }}
+                >
+                  {sub.includes(' / ') ? sub.replace(' / ', ' ➔ ') : sub}
+                </button>
+              ))}
+            </div>
+          );
+        })()
+      )}
 
       <div className="items-container" style={styles.itemsContainer}>
         {loading ? (
@@ -251,11 +289,11 @@ const Items = () => {
                   {groupItems.map((item) => (
                     <div key={item._id} className="glass-card hover-scale" style={styles.itemCard}>
                       <div style={styles.menuDotContainer}>
-                        <button 
+                        <button
                           onClick={(e) => {
                             e.stopPropagation();
                             setShowDropdown(showDropdown === item._id ? null : item._id);
-                          }} 
+                          }}
                           style={styles.menuDotBtn}
                         >
                           <MoreVertical size={16} />
@@ -263,10 +301,10 @@ const Items = () => {
                         {showDropdown === item._id && (
                           <div style={styles.dropdownMenu}>
                             <button onClick={() => { handleEdit(item); setShowDropdown(null); }} style={styles.dropdownItem}>
-                              <Edit2 size={14} style={{ marginRight: '0.4rem' }}/> Edit
+                              <Edit2 size={14} style={{ marginRight: '0.4rem' }} /> Edit
                             </button>
-                            <button onClick={() => { confirmDelete(item._id); setShowDropdown(null); }} style={{...styles.dropdownItem, color: 'var(--accent-red)'}}>
-                              <Trash2 size={14} style={{ marginRight: '0.4rem' }}/> Delete
+                            <button onClick={() => { confirmDelete(item._id); setShowDropdown(null); }} style={{ ...styles.dropdownItem, color: 'var(--accent-red)' }}>
+                              <Trash2 size={14} style={{ marginRight: '0.4rem' }} /> Delete
                             </button>
                           </div>
                         )}
@@ -280,10 +318,6 @@ const Items = () => {
                             <Package size={32} color="var(--text-muted)" opacity={0.5} />
                           </div>
                         )}
-                        <div style={styles.itemCategoryBadge}>
-                          {item.category?.name || 'No Category'}
-                          {item.subCategory && <span style={{ opacity: 0.8, fontWeight: 'normal', marginLeft: '4px' }}>| {item.subCategory}</span>}
-                        </div>
                       </div>
 
                       <div style={styles.itemHeaderContainer}>
@@ -335,28 +369,28 @@ const Items = () => {
               <h3>{isEditing ? 'Edit Item' : 'Add New Item'}</h3>
               <button onClick={resetForm} style={styles.closeBtn}><X /></button>
             </div>
-            
+
             <form onSubmit={handleSubmit}>
               <div style={styles.formGrid}>
                 {/* Left Column: Fields */}
                 <div style={styles.formLeft}>
                   <div style={styles.formGroup}>
                     <label>Item Name</label>
-                    <input 
-                      name="name" 
-                      value={formData.name} 
-                      onChange={handleInputChange} 
+                    <input
+                      name="name"
+                      value={formData.name}
+                      onChange={handleInputChange}
                       placeholder="e.g. Chicken Burger"
-                      required 
+                      required
                     />
                   </div>
 
                   <div style={styles.formGroup}>
                     <label>Category</label>
-                    <select 
-                      name="category" 
-                      value={formData.category} 
-                      onChange={handleInputChange} 
+                    <select
+                      name="category"
+                      value={formData.category}
+                      onChange={handleInputChange}
                       required
                     >
                       <option value="">Select Category</option>
@@ -369,9 +403,9 @@ const Items = () => {
                   {formData.category && categories.find(c => c._id === formData.category)?.subCategories?.length > 0 && (
                     <div style={styles.formGroup}>
                       <label>Sub Category</label>
-                      <select 
-                        name="subCategory" 
-                        value={formData.subCategory} 
+                      <select
+                        name="subCategory"
+                        value={formData.subCategory}
                         onChange={handleInputChange}
                       >
                         <option value="">Select Sub Category</option>
@@ -384,14 +418,14 @@ const Items = () => {
 
                   <div style={styles.formGroup}>
                     <label>Price (Rs.)</label>
-                    <input 
-                      type="number" 
-                      name="price" 
-                      value={formData.variants.length > 0 ? '' : formData.price} 
-                      onChange={handleInputChange} 
+                    <input
+                      type="number"
+                      name="price"
+                      value={formData.variants.length > 0 ? '' : formData.price}
+                      onChange={handleInputChange}
                       placeholder={formData.variants.length > 0 ? "Price defined in variants" : "e.g. 350"}
                       required={formData.variants.length === 0}
-                      disabled={formData.variants.length > 0} 
+                      disabled={formData.variants.length > 0}
                     />
                   </div>
                 </div>
@@ -408,11 +442,11 @@ const Items = () => {
                         <span>Click to upload</span>
                       </>
                     )}
-                    <input 
-                      id="imageInput" 
-                      type="file" 
-                      onChange={handleImageChange} 
-                      hidden 
+                    <input
+                      id="imageInput"
+                      type="file"
+                      onChange={handleImageChange}
+                      hidden
                       accept="image/*"
                     />
                   </div>
@@ -422,38 +456,38 @@ const Items = () => {
                 <div style={{ gridColumn: '1 / -1', marginTop: '0.5rem', borderTop: '1px solid var(--glass-border)', paddingTop: '1rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.8rem' }}>
                     <h4 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-main)', fontWeight: '800' }}>Item Variants / Options (Optional)</h4>
-                    <button 
-                      type="button" 
-                      onClick={handleAddVariant} 
+                    <button
+                      type="button"
+                      onClick={handleAddVariant}
                       style={{ fontSize: '0.8rem', color: 'var(--primary-yellow)', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.2rem', cursor: 'pointer' }}
                     >
                       <Plus size={14} /> Add Option
                     </button>
                   </div>
-                  
+
                   {formData.variants.length > 0 ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '180px', overflowY: 'auto', paddingRight: '0.4rem' }}>
                       {formData.variants.map((v, index) => (
                         <div key={index} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                          <input 
-                            type="text" 
-                            placeholder="Option Name (e.g. Chest / With Cheese)" 
-                            value={v.name} 
-                            onChange={(e) => handleVariantChange(index, 'name', e.target.value)} 
+                          <input
+                            type="text"
+                            placeholder="Option Name (e.g. Chest / With Cheese)"
+                            value={v.name}
+                            onChange={(e) => handleVariantChange(index, 'name', e.target.value)}
                             required
                             style={{ flex: 2, padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--glass-border)', backgroundColor: 'var(--glass)', color: 'var(--text-main)', fontSize: '0.85rem' }}
                           />
-                          <input 
-                            type="number" 
-                            placeholder="Price (Rs.)" 
-                            value={v.price} 
-                            onChange={(e) => handleVariantChange(index, 'price', Number(e.target.value))} 
+                          <input
+                            type="number"
+                            placeholder="Price (Rs.)"
+                            value={v.price}
+                            onChange={(e) => handleVariantChange(index, 'price', Number(e.target.value))}
                             required
                             style={{ flex: 1, padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--glass-border)', backgroundColor: 'var(--glass)', color: 'var(--text-main)', fontSize: '0.85rem' }}
                           />
-                          <button 
-                            type="button" 
-                            onClick={() => handleRemoveVariant(index)} 
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveVariant(index)}
                             style={{ color: 'var(--accent-red)', cursor: 'pointer', padding: '0.2rem' }}
                           >
                             <Trash2 size={16} />
@@ -475,7 +509,7 @@ const Items = () => {
         </div>
       )}
 
-      <ConfirmModal 
+      <ConfirmModal
         isOpen={confirmModal.isOpen}
         onClose={() => setConfirmModal({ isOpen: false, itemId: null })}
         onConfirm={handleDelete}
@@ -491,32 +525,49 @@ const styles = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: '2.5rem',
+    marginBottom: '1.25rem',
   },
   sectionTitle: {
-    fontSize: '1.75rem',
+    fontSize: '1.3rem',
     fontWeight: '800',
     color: 'var(--text-main)',
   },
   sectionSubtitle: {
     color: 'var(--text-muted)',
+    fontSize: '0.8rem',
   },
   tabsContainer: {
     display: 'flex',
     gap: '1rem',
-    marginBottom: '2.5rem',
+    marginBottom: '1rem',
     overflowX: 'auto',
     paddingBottom: '0.5rem',
   },
   tab: {
-    padding: '0.6rem 1.5rem',
-    borderRadius: '10px',
+    padding: '0.45rem 1rem',
+    borderRadius: '8px',
     fontWeight: '600',
-    fontSize: '0.9rem',
+    fontSize: '0.8rem',
     border: '1px solid var(--glass-border)',
     transition: 'all 0.3s ease',
-    whiteSpace: 'nowrap',
     cursor: 'pointer',
+  },
+  subTab: {
+    padding: '0.3rem 0.6rem',
+    borderRadius: '6px',
+    fontWeight: '600',
+    fontSize: '0.72rem',
+    whiteSpace: 'nowrap',
+    border: '1px solid var(--glass-border)',
+    transition: 'all 0.3s ease',
+    cursor: 'pointer',
+  },
+  subTabsContainer: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '0.35rem',
+    marginBottom: '1.5rem',
+    width: '100%',
   },
   itemsContainer: {
     display: 'flex',
@@ -607,7 +658,7 @@ const styles = {
     borderRadius: '12px',
     overflow: 'hidden',
     marginBottom: '1rem',
-    backgroundColor: 'rgba(0,0,0,0.1)',
+    backgroundColor: '#e5e7eb',
     position: 'relative',
   },
   itemImage: {
@@ -637,16 +688,14 @@ const styles = {
   itemHeaderContainer: {
     marginBottom: '1rem',
     width: '100%',
-    paddingRight: '2rem',
   },
   itemName: {
     color: 'var(--text-main)',
-    fontWeight: '800',
-    fontSize: '1.2rem',
+    fontWeight: '600',
+    fontSize: '1rem',
     letterSpacing: '-0.5px',
-    whiteSpace: 'nowrap',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
+    lineHeight: '1.2',
+    wordBreak: 'break-word',
   },
   itemPriceContainer: {
     display: 'flex',
@@ -672,7 +721,7 @@ const styles = {
     color: 'var(--text-muted)',
     gap: '1rem',
   },
-  
+
   modalOverlay: {
     position: 'fixed',
     top: 0,

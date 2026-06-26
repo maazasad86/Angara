@@ -9,19 +9,20 @@ const POS = () => {
   const [categories, setCategories] = useState([]);
   const [deals, setDeals] = useState([]);
   const [activeCategory, setActiveCategory] = useState('All');
+  const [activeSubCategory, setActiveSubCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
-  
+
   // Cart/Bill State
   const [cart, setCart] = useState([]);
-  const [orderType, setOrderType] = useState('Takeaway');
+  const [orderType, setOrderType] = useState('Dine-in');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerName, setCustomerName] = useState('');
-  
+
   const [printType, setPrintType] = useState('RECEIPT');
   const [heldOrders, setHeldOrders] = useState([]);
   const [showHeldModal, setShowHeldModal] = useState(false);
-  
+
   // Custom Modal for Hold Bill
   const [showHoldPrompt, setShowHoldPrompt] = useState(false);
   const [holdNoteInput, setHoldNoteInput] = useState('');
@@ -103,9 +104,6 @@ const POS = () => {
       item.variants.forEach(v => {
         initialQuantities[v.name] = 0;
       });
-      if (item.variants.length > 0) {
-        initialQuantities[item.variants[0].name] = 1;
-      }
       setVariantQuantities(initialQuantities);
       setShowVariantModal(true);
       return;
@@ -137,13 +135,13 @@ const POS = () => {
 
         if (suffixParts.length > 0) {
           cartItemId = `${item._id}-${suffixParts.join('-')}`;
-          
+
           // Construct inline text description of selected variants
           const selectedText = clonedItems
             .filter(di => di.chosenVariant)
             .map(di => di.chosenVariant)
             .join(', ');
-          
+
           itemName = `${item.name} (${selectedText})`;
         }
       } else if (chosenVariant) {
@@ -157,15 +155,15 @@ const POS = () => {
       if (existing) {
         return prev.map(i => i._id === cartItemId ? { ...i, quantity: i.quantity + customQuantity } : i);
       }
-      return [...prev, { 
-        ...item, 
-        _id: cartItemId, 
+      return [...prev, {
+        ...item,
+        _id: cartItemId,
         originalId: item._id,
-        name: itemName, 
-        price: itemPrice, 
+        name: itemName,
+        price: itemPrice,
         items: clonedItems,
         chosenVariant: chosenVariant ? chosenVariant.name : null,
-        quantity: customQuantity 
+        quantity: customQuantity
       }];
     });
   };
@@ -189,16 +187,17 @@ const POS = () => {
   const displayItems = activeCategory === 'Deals'
     ? deals.filter(deal => deal.name.toLowerCase().includes(searchQuery.toLowerCase()))
     : items.filter(item => {
-        const matchesCategory = activeCategory === 'All' || item.category?.name === activeCategory;
-        const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
-        return matchesCategory && matchesSearch;
-      });
+      const matchesCategory = activeCategory === 'All' || item.category?.name === activeCategory;
+      const matchesSubCategory = activeSubCategory === 'All' || item.subCategory === activeSubCategory;
+      const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesCategory && matchesSubCategory && matchesSearch;
+    });
 
   const groupedItems = useMemo(() => {
     if (activeCategory === 'Deals') {
       return { 'Deals': displayItems };
     }
-    
+
     const groups = {};
     displayItems.forEach(item => {
       const sub = item.subCategory && item.subCategory.trim() ? item.subCategory.trim() : 'Uncategorized';
@@ -207,13 +206,13 @@ const POS = () => {
       }
       groups[sub].push(item);
     });
-    
+
     // Sort keys based on category's defined subCategories array
     const currentCategoryObj = categories.find(cat => cat.name === activeCategory);
     const orderedSubCats = currentCategoryObj?.subCategories || [];
-    
+
     const sortedGroups = {};
-    
+
     // First, add groups in the order specified by the category
     orderedSubCats.forEach(sub => {
       const matchingKey = Object.keys(groups).find(k => k.toLowerCase() === sub.toLowerCase());
@@ -222,12 +221,12 @@ const POS = () => {
         delete groups[matchingKey];
       }
     });
-    
+
     // Then, add any remaining groups (e.g. Uncategorized or dynamically added ones)
     Object.keys(groups).forEach(key => {
       sortedGroups[key] = groups[key];
     });
-    
+
     return sortedGroups;
   }, [displayItems, activeCategory, categories]);
 
@@ -259,9 +258,9 @@ const POS = () => {
     const updatedHolds = [...heldOrders, newHold];
     setHeldOrders(updatedHolds);
     localStorage.setItem('angaara_held_orders', JSON.stringify(updatedHolds));
-    
+
     setCart([]);
-    setOrderType('Takeaway');
+    setOrderType('Dine-in');
     setCustomerName('');
     setCustomerPhone('');
     setShowHoldPrompt(false);
@@ -275,13 +274,13 @@ const POS = () => {
     setOrderType(heldOrder.orderType);
     setCustomerName(heldOrder.customerName || '');
     setCustomerPhone(heldOrder.customerPhone || '');
-    
+
     const updatedHolds = heldOrders.filter(h => h.id !== heldOrder.id);
     setHeldOrders(updatedHolds);
     localStorage.setItem('angaara_held_orders', JSON.stringify(updatedHolds));
     setShowHeldModal(false);
   };
-  
+
   const handleDeleteHoldClick = (id) => {
     setOrderToDelete(id);
     setShowDeleteConfirm(true);
@@ -313,21 +312,21 @@ const POS = () => {
         drawerCash: drawerCashInput,
         notes: 'Closed via POS'
       });
-      
+
       const report = res.data;
-      
+
       const diff = report.difference;
       const statusText = diff === 0 ? "Exact Match" : diff < 0 ? `Shortage: Rs. ${Math.abs(diff)}` : `Excess: Rs. ${diff}`;
-      
+
       const msg = `*ANGARA RESTAURANT - Z-REPORT*%0A--------------------%0A*Orders:* ${report.totalOrders}%0A*System Cash:* Rs. ${report.systemCash}%0A*Drawer Cash:* Rs. ${report.drawerCash}%0A*Status:* ${statusText}%0A--------------------%0A*Time:* ${new Date().toLocaleTimeString()}`;
-      
+
       window.open(`https://wa.me/?text=${msg}`, '_blank');
-      
+
       setShowShiftModal(false);
       setShiftData(null);
       setDrawerCashInput('');
       alert("Shift Closed Successfully!");
-      
+
     } catch (err) {
       alert("Failed to close shift: " + err.message);
     }
@@ -356,7 +355,7 @@ const POS = () => {
       setTimeout(() => {
         window.print();
         setCart([]);
-        setOrderType('Takeaway');
+        setOrderType('Dine-in');
         setCustomerName('');
         setCustomerPhone('');
         setShowCheckoutModal(false);
@@ -376,18 +375,18 @@ const POS = () => {
           <div style={styles.menuHeader}>
             <div style={styles.searchContainer}>
               <Search size={20} style={styles.searchIcon} />
-              <input 
-                type="text" 
-                placeholder="Search items..." 
+              <input
+                type="text"
+                placeholder="Search items..."
                 style={styles.searchInput}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            
+
             <div style={styles.categoriesScroll}>
-              <button 
-                onClick={() => setActiveCategory('All')}
+              <button
+                onClick={() => { setActiveCategory('All'); setActiveSubCategory('All'); }}
                 style={{
                   ...styles.catTab,
                   backgroundColor: activeCategory === 'All' ? 'var(--primary-yellow)' : 'var(--glass)',
@@ -397,9 +396,9 @@ const POS = () => {
                 All
               </button>
               {categories.map(cat => (
-                <button 
+                <button
                   key={cat._id}
-                  onClick={() => setActiveCategory(cat.name)}
+                  onClick={() => { setActiveCategory(cat.name); setActiveSubCategory('All'); }}
                   style={{
                     ...styles.catTab,
                     backgroundColor: activeCategory === cat.name ? 'var(--primary-yellow)' : 'var(--glass)',
@@ -409,8 +408,8 @@ const POS = () => {
                   {cat.name}
                 </button>
               ))}
-              <button 
-                onClick={() => setActiveCategory('Deals')}
+              <button
+                onClick={() => { setActiveCategory('Deals'); setActiveSubCategory('All'); }}
                 style={{
                   ...styles.catTab,
                   backgroundColor: activeCategory === 'Deals' ? 'var(--primary-yellow)' : 'var(--glass)',
@@ -420,6 +419,43 @@ const POS = () => {
                 Deals
               </button>
             </div>
+
+            {activeCategory !== 'All' && activeCategory !== 'Deals' && (
+              (() => {
+                const currentCat = categories.find(cat => cat.name === activeCategory);
+                const subCats = currentCat?.subCategories || [];
+                if (subCats.length === 0) return null;
+                return (
+                  <div style={styles.subCategoriesScroll}>
+                    <button
+                      onClick={() => setActiveSubCategory('All')}
+                      style={{
+                        ...styles.subCatTab,
+                        backgroundColor: activeSubCategory === 'All' ? 'var(--primary-yellow)' : 'var(--glass)',
+                        color: activeSubCategory === 'All' ? '#000' : 'var(--text-main)',
+                        border: '1px solid var(--glass-border)',
+                      }}
+                    >
+                      All Option
+                    </button>
+                    {subCats.map((sub, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setActiveSubCategory(sub)}
+                        style={{
+                          ...styles.subCatTab,
+                          backgroundColor: activeSubCategory === sub ? 'var(--primary-yellow)' : 'var(--glass)',
+                          color: activeSubCategory === sub ? '#000' : 'var(--text-main)',
+                          border: '1px solid var(--glass-border)',
+                        }}
+                      >
+                        {sub.includes(' / ') ? sub.replace(' / ', ' ➔ ') : sub}
+                      </button>
+                    ))}
+                  </div>
+                );
+              })()
+            )}
           </div>
 
           <div className="items-container" style={styles.itemsContainer}>
@@ -431,7 +467,7 @@ const POS = () => {
               Object.keys(groupedItems).map(subCat => {
                 const groupItems = groupedItems[subCat];
                 const showHeading = Object.keys(groupedItems).length > 1 || (subCat !== 'Uncategorized' && subCat !== 'Deals');
-                
+
                 return (
                   <div key={subCat} style={styles.subCatSection}>
                     {showHeading && (
@@ -442,9 +478,9 @@ const POS = () => {
                         const isDeal = !!item.items;
                         if (isDeal) {
                           return (
-                            <div 
-                              key={item._id} 
-                              className="glass-card" 
+                            <div
+                              key={item._id}
+                              className="glass-card"
                               style={styles.itemCard}
                               onClick={() => addToCart(item)}
                             >
@@ -474,9 +510,9 @@ const POS = () => {
                         }
 
                         return (
-                          <div 
-                            key={item._id} 
-                            className="glass-card" 
+                          <div
+                            key={item._id}
+                            className="glass-card"
                             style={styles.itemCard}
                             onClick={() => addToCart(item)}
                           >
@@ -500,21 +536,14 @@ const POS = () => {
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', overflow: 'hidden', flex: 1 }}>
                                 <h4 style={{ ...styles.itemName, margin: 0 }} title={item.name}>{item.name}</h4>
                                 {item.variants && item.variants.length > 0 && (
-                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px', marginTop: '4px' }}>
-                                    {item.variants.map((v, i) => (
-                                      <span key={i} style={{
-                                        fontSize: '0.65rem',
-                                        padding: '1px 4px',
-                                        borderRadius: '4px',
-                                        backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                                        color: 'var(--text-muted)',
-                                        border: '1px solid rgba(255, 255, 255, 0.1)',
-                                        whiteSpace: 'nowrap'
-                                      }}>
-                                        {v.name}: {v.price}
-                                      </span>
-                                    ))}
-                                  </div>
+                                  <span style={{
+                                    fontSize: '0.7rem',
+                                    color: 'var(--primary-yellow)',
+                                    marginTop: '4px',
+                                    fontWeight: '700'
+                                  }}>
+                                    {item.variants.length} Options
+                                  </span>
                                 )}
                               </div>
                               <div style={styles.addBtn}>
@@ -563,16 +592,16 @@ const POS = () => {
 
           {orderType === 'Delivery' && (
             <div style={styles.customerInfoContainer}>
-              <input 
-                type="text" 
-                placeholder="Phone (e.g. 0300...)" 
+              <input
+                type="text"
+                placeholder="Phone (e.g. 0300...)"
                 value={customerPhone}
                 onChange={(e) => setCustomerPhone(e.target.value)}
                 style={{ ...styles.customerInput, flex: 1, minWidth: 0 }}
               />
-              <input 
-                type="text" 
-                placeholder="Customer Name" 
+              <input
+                type="text"
+                placeholder="Customer Name"
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
                 style={{ ...styles.customerInput, flex: 1, minWidth: 0 }}
@@ -631,35 +660,35 @@ const POS = () => {
             </div>
 
             <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
-              <button 
-                onClick={handleHoldOrderClick} 
-                style={{...styles.printBtn, flex: 1, backgroundColor: 'var(--glass)', border: '1px solid var(--glass-border)', color: 'var(--text-main)'}}
+              <button
+                onClick={handleHoldOrderClick}
+                style={{ ...styles.printBtn, flex: 1, backgroundColor: 'var(--glass)', border: '1px solid var(--glass-border)', color: 'var(--text-main)' }}
                 disabled={cart.length === 0}
               >
                 Hold Bill
               </button>
-              <button 
-                onClick={() => setShowHeldModal(true)} 
-                style={{...styles.printBtn, flex: 1, backgroundColor: 'var(--glass)', border: '1px solid var(--glass-border)', color: 'var(--text-main)'}}
+              <button
+                onClick={() => setShowHeldModal(true)}
+                style={{ ...styles.printBtn, flex: 1, backgroundColor: 'var(--glass)', border: '1px solid var(--glass-border)', color: 'var(--text-main)' }}
               >
                 Pending Bills ({heldOrders.length})
               </button>
             </div>
 
             <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button 
-                onClick={handlePrintKOT} 
-                style={{...styles.printBtn, flex: 1, backgroundColor: '#ef4444', color: '#fff', border: 'none'}}
+              <button
+                onClick={handlePrintKOT}
+                style={{ ...styles.printBtn, flex: 1, backgroundColor: '#ef4444', color: '#fff', border: 'none' }}
                 disabled={cart.length === 0}
               >
                 Kitchen Slip
               </button>
-              <button 
+              <button
                 onClick={() => {
                   setCashReceived(''); // Explicitly empty
                   setShowCheckoutModal(true);
-                }} 
-                style={{...styles.printBtn, flex: 1.5}} 
+                }}
+                style={{ ...styles.printBtn, flex: 1.5 }}
                 className="btn-primary"
                 disabled={cart.length === 0}
               >
@@ -721,7 +750,7 @@ const POS = () => {
               <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-main)' }}><Clock size={24} /> Pending Bills ({heldOrders.length})</h2>
               <button onClick={() => setShowHeldModal(false)} style={{ backgroundColor: 'transparent', border: 'none', color: 'var(--text-main)', cursor: 'pointer' }}><X size={24} /></button>
             </div>
-            
+
             {heldOrders.length === 0 ? (
               <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '2rem 0' }}>No pending bills right now.</p>
             ) : (
@@ -755,11 +784,11 @@ const POS = () => {
               <h2 style={{ color: 'var(--text-main)', fontSize: '1.25rem' }}>Hold Bill</h2>
               <button onClick={() => setShowHoldPrompt(false)} style={{ backgroundColor: 'transparent', border: 'none', color: 'var(--text-main)', cursor: 'pointer' }}><X size={24} /></button>
             </div>
-            
+
             <p style={{ color: 'var(--text-muted)', marginBottom: '1rem', fontSize: '0.9rem' }}>Enter Table No. or Customer Name (e.g., Table 4, Ali):</p>
-            
-            <input 
-              type="text" 
+
+            <input
+              type="text"
               value={holdNoteInput}
               onChange={(e) => setHoldNoteInput(e.target.value)}
               placeholder="Note / Table No."
@@ -767,7 +796,7 @@ const POS = () => {
               autoFocus
               onKeyDown={(e) => e.key === 'Enter' && confirmHoldOrder()}
             />
-            
+
             <div style={{ display: 'flex', gap: '1rem' }}>
               <button onClick={() => setShowHoldPrompt(false)} style={{ flex: 1, padding: '0.8rem', backgroundColor: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-main)', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>Cancel</button>
               <button onClick={confirmHoldOrder} style={{ flex: 1, padding: '0.8rem', backgroundColor: 'var(--primary-yellow)', color: '#000', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>Save Bill</button>
@@ -785,7 +814,7 @@ const POS = () => {
             </div>
             <h2 style={{ color: 'var(--text-main)', fontSize: '1.25rem', marginBottom: '0.5rem' }}>Delete Pending Bill?</h2>
             <p style={{ color: 'var(--text-muted)', marginBottom: '2rem', fontSize: '0.9rem' }}>Are you sure you want to permanently delete this parked bill? This action cannot be undone.</p>
-            
+
             <div style={{ display: 'flex', gap: '1rem' }}>
               <button onClick={() => setShowDeleteConfirm(false)} style={{ flex: 1, padding: '0.8rem', backgroundColor: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-main)', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>Cancel</button>
               <button onClick={confirmDeleteHold} style={{ flex: 1, padding: '0.8rem', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>Delete</button>
@@ -802,7 +831,7 @@ const POS = () => {
               <h2 style={{ color: 'var(--text-main)', fontSize: '1.2rem', fontWeight: '800', margin: 0 }}>Cash & Checkout</h2>
               <button onClick={() => setShowCheckoutModal(false)} style={{ backgroundColor: 'transparent', border: 'none', color: 'var(--text-main)', cursor: 'pointer', padding: 0 }}><X size={20} /></button>
             </div>
-            
+
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', padding: '0.8rem', backgroundColor: 'rgba(250, 204, 21, 0.1)', borderRadius: '8px', border: '1px solid rgba(250, 204, 21, 0.3)' }}>
               <span style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--text-main)' }}>Total Bill:</span>
               <span style={{ fontSize: '1.2rem', fontWeight: '800', color: 'var(--primary-yellow)' }}>Rs. {total.toFixed(0)}</span>
@@ -810,8 +839,8 @@ const POS = () => {
 
             <div style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', marginBottom: '0.4rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>Cash Received (Rs.)</label>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 value={cashReceived}
                 onChange={(e) => setCashReceived(e.target.value)}
                 placeholder="0"
@@ -853,12 +882,12 @@ const POS = () => {
               <h2 style={{ color: '#ef4444', fontSize: '1.2rem', fontWeight: '800', margin: 0 }}>Close Shift (Z-Report)</h2>
               <button onClick={() => setShowShiftModal(false)} style={{ backgroundColor: 'transparent', border: 'none', color: 'var(--text-main)', cursor: 'pointer', padding: 0 }}><X size={20} /></button>
             </div>
-            
+
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.8rem', padding: '0.8rem', backgroundColor: 'rgba(255, 255, 255, 0.05)', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
               <span style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--text-main)' }}>System Cash:</span>
               <span style={{ fontSize: '1.1rem', fontWeight: '800', color: 'var(--text-main)' }}>Rs. {shiftData.systemCash}</span>
             </div>
-            
+
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', padding: '0.8rem', backgroundColor: 'rgba(255, 255, 255, 0.05)', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
               <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Total Orders:</span>
               <span style={{ fontSize: '0.9rem', fontWeight: 'bold', color: 'var(--text-main)' }}>{shiftData.totalOrders}</span>
@@ -866,8 +895,8 @@ const POS = () => {
 
             <div style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', marginBottom: '0.4rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>Actual Drawer Cash (Rs.)</label>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 value={drawerCashInput}
                 onChange={(e) => setDrawerCashInput(e.target.value)}
                 placeholder="Count cash..."
@@ -880,9 +909,9 @@ const POS = () => {
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', padding: '0.8rem', backgroundColor: 'rgba(255, 255, 255, 0.03)', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
                 <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Status:</span>
                 <span style={{ fontSize: '1.1rem', fontWeight: '800', color: (Number(drawerCashInput) - shiftData.systemCash) >= 0 ? (Number(drawerCashInput) === shiftData.systemCash ? '#a3e635' : '#facc15') : '#ef4444' }}>
-                  {Number(drawerCashInput) - shiftData.systemCash === 0 ? 'Exact Match' : 
-                   Number(drawerCashInput) - shiftData.systemCash > 0 ? `Excess: Rs. ${Number(drawerCashInput) - shiftData.systemCash}` : 
-                   `Shortage: Rs. ${Math.abs(Number(drawerCashInput) - shiftData.systemCash)}`}
+                  {Number(drawerCashInput) - shiftData.systemCash === 0 ? 'Exact Match' :
+                    Number(drawerCashInput) - shiftData.systemCash > 0 ? `Excess: Rs. ${Number(drawerCashInput) - shiftData.systemCash}` :
+                      `Shortage: Rs. ${Math.abs(Number(drawerCashInput) - shiftData.systemCash)}`}
                 </span>
               </div>
             )}
@@ -904,7 +933,7 @@ const POS = () => {
               <h3 style={{ color: 'var(--text-main)', fontSize: '1.15rem', fontWeight: '800', margin: 0 }}>Select Variant / Option</h3>
               <button onClick={() => setShowVariantModal(false)} style={{ backgroundColor: 'transparent', border: 'none', color: 'var(--text-main)', cursor: 'pointer', padding: 0 }}><X size={20} /></button>
             </div>
-            
+
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
               Choose quantities for <strong style={{ color: 'var(--text-main)' }}>{selectedVariantItem.name}</strong> options:
             </p>
@@ -913,15 +942,15 @@ const POS = () => {
               {selectedVariantItem.variants.map((v, idx) => {
                 const qty = variantQuantities[v.name] || 0;
                 return (
-                  <div 
-                    key={idx} 
-                    style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'space-between', 
-                      padding: '0.75rem 1rem', 
-                      borderRadius: '10px', 
-                      border: '1px solid', 
+                  <div
+                    key={idx}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '0.75rem 1rem',
+                      borderRadius: '10px',
+                      border: '1px solid',
                       borderColor: qty > 0 ? 'var(--primary-yellow)' : 'var(--glass-border)',
                       backgroundColor: qty > 0 ? 'rgba(250, 204, 21, 0.05)' : 'rgba(255, 255, 255, 0.02)',
                       transition: 'all 0.2s'
@@ -931,10 +960,10 @@ const POS = () => {
                       <span style={{ fontSize: '0.9rem', fontWeight: '600', color: 'var(--text-main)' }}>{v.name}</span>
                       <span style={{ fontSize: '0.8rem', color: 'var(--primary-yellow)', fontWeight: '700' }}>Rs. {v.price}</span>
                     </div>
-                    
+
                     {/* Quantity Selector for this variant */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <button 
+                      <button
                         type="button"
                         onClick={() => {
                           setVariantQuantities(prev => ({
@@ -949,7 +978,7 @@ const POS = () => {
                       <span style={{ fontSize: '0.95rem', fontWeight: '700', color: qty > 0 ? 'var(--text-main)' : 'var(--text-muted)', minWidth: '20px', textAlign: 'center' }}>
                         {qty}
                       </span>
-                      <button 
+                      <button
                         type="button"
                         onClick={() => {
                           setVariantQuantities(prev => ({
@@ -968,13 +997,13 @@ const POS = () => {
             </div>
 
             <div style={{ display: 'flex', gap: '0.8rem' }}>
-              <button 
-                onClick={() => setShowVariantModal(false)} 
+              <button
+                onClick={() => setShowVariantModal(false)}
                 style={{ flex: 1, padding: '0.75rem', backgroundColor: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-main)', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem' }}
               >
                 Cancel
               </button>
-              <button 
+              <button
                 onClick={() => {
                   let addedAny = false;
                   selectedVariantItem.variants.forEach(v => {
@@ -989,7 +1018,7 @@ const POS = () => {
                     setSelectedVariantItem(null);
                     setVariantQuantities({});
                   }
-                }} 
+                }}
                 style={{ flex: 2, padding: '0.75rem', backgroundColor: 'var(--primary-yellow)', color: '#000', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '800', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                 disabled={!Object.values(variantQuantities).some(q => q > 0)}
               >
@@ -1008,7 +1037,7 @@ const POS = () => {
               <h3 style={{ color: 'var(--text-main)', fontSize: '1.15rem', fontWeight: '800', margin: 0 }}>Select Variants for Deal</h3>
               <button onClick={() => setShowDealVariantModal(false)} style={{ backgroundColor: 'transparent', border: 'none', color: 'var(--text-main)', cursor: 'pointer', padding: 0 }}><X size={20} /></button>
             </div>
-            
+
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
               Choose options for the items in <strong style={{ color: 'var(--text-main)' }}>{selectedDealForVariants.name}</strong>:
             </p>
@@ -1027,7 +1056,7 @@ const POS = () => {
                       {di.item.variants.map((v, vIdx) => {
                         const isSelected = selectedDealVariants[idx]?.name === v.name;
                         return (
-                          <label 
+                          <label
                             key={vIdx}
                             style={{
                               display: 'flex',
@@ -1049,7 +1078,7 @@ const POS = () => {
                             }}
                           >
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                              <input 
+                              <input
                                 type="radio"
                                 name={`deal-variant-group-${idx}`}
                                 checked={isSelected}
@@ -1074,19 +1103,19 @@ const POS = () => {
             </div>
 
             <div style={{ display: 'flex', gap: '0.8rem' }}>
-              <button 
-                onClick={() => setShowDealVariantModal(false)} 
+              <button
+                onClick={() => setShowDealVariantModal(false)}
                 style={{ flex: 1, padding: '0.75rem', backgroundColor: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-main)', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem' }}
               >
                 Cancel
               </button>
-              <button 
+              <button
                 onClick={() => {
                   addToCart(selectedDealForVariants, null, selectedDealVariants);
                   setShowDealVariantModal(false);
                   setSelectedDealForVariants(null);
                   setSelectedDealVariants({});
-                }} 
+                }}
                 style={{ flex: 2, padding: '0.75rem', backgroundColor: 'var(--primary-yellow)', color: '#000', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '800', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               >
                 Confirm Options
@@ -1102,8 +1131,11 @@ const POS = () => {
 const styles = {
   posContainer: {
     display: 'flex',
-    gap: '2rem',
-    height: 'calc(100vh - 180px)',
+    gap: '1.25rem',
+    height: 'calc(100vh - 120px)',
+    width: '100%',
+    maxWidth: '100%',
+    minWidth: 0,
   },
   menuSide: {
     flex: 1,
@@ -1111,11 +1143,14 @@ const styles = {
     flexDirection: 'column',
     gap: '1.5rem',
     overflow: 'hidden',
+    minWidth: 0,
   },
   menuHeader: {
     display: 'flex',
     flexDirection: 'column',
     gap: '1rem',
+    width: '100%',
+    minWidth: 0,
   },
   searchContainer: {
     position: 'relative',
@@ -1141,14 +1176,32 @@ const styles = {
     gap: '0.75rem',
     overflowX: 'auto',
     paddingBottom: '0.5rem',
+    width: '100%',
+    minWidth: 0,
   },
   catTab: {
-    padding: '0.6rem 1.25rem',
-    borderRadius: '10px',
+    padding: '0.45rem 1rem',
+    borderRadius: '8px',
     fontWeight: '600',
-    fontSize: '0.85rem',
+    fontSize: '0.8rem',
     whiteSpace: 'nowrap',
     transition: 'all 0.3s ease',
+  },
+  subCatTab: {
+    padding: '0.3rem 0.6rem',
+    borderRadius: '6px',
+    fontWeight: '600',
+    fontSize: '0.72rem',
+    whiteSpace: 'nowrap',
+    transition: 'all 0.3s ease',
+  },
+  subCategoriesScroll: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '0.35rem',
+    marginTop: '0.75rem',
+    width: '100%',
+    minWidth: 0,
   },
   itemsContainer: {
     flex: 1,
@@ -1175,23 +1228,23 @@ const styles = {
   itemsGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-    gap: '1rem',
+    gap: '0.75rem',
   },
   itemCard: {
-    padding: '0.75rem',
+    padding: '0.6rem',
     cursor: 'pointer',
     transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
     display: 'flex',
     flexDirection: 'column',
-    gap: '0.75rem',
-    height: 'fit-content',
+    gap: '0.6rem',
+    height: '100%',
   },
   itemImageContainer: {
     position: 'relative',
-    aspectRatio: '4/3',
+    height: '95px',
     borderRadius: '8px',
     overflow: 'hidden',
-    backgroundColor: 'rgba(0,0,0,0.15)',
+    backgroundColor: '#e5e7eb',
   },
   itemImage: {
     width: '100%',
@@ -1213,6 +1266,7 @@ const styles = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginTop: 'auto',
   },
   dealCardInfo: {
     display: 'flex',
@@ -1235,12 +1289,11 @@ const styles = {
     marginTop: '0.2rem',
   },
   itemName: {
-    fontSize: '0.9rem',
-    fontWeight: '700',
+    fontSize: '0.85rem',
+    fontWeight: '600',
     color: 'var(--text-main)',
-    whiteSpace: 'nowrap',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
+    lineHeight: '1.2',
+    wordBreak: 'break-word',
   },
   addBtn: {
     width: '28px',
@@ -1252,7 +1305,7 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
   },
-  
+
   billSide: {
     width: '380px',
     display: 'flex',

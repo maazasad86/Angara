@@ -77,8 +77,9 @@ const styles = {
   main: {
     flex: 1,
     marginLeft: '280px',
-    padding: '2rem 3rem',
+    padding: '1rem 2rem',
     transition: 'all 0.3s ease',
+    minWidth: 0,
   },
   header: {
     display: 'flex',
@@ -106,6 +107,8 @@ const styles = {
   },
   content: {
     animation: 'fadeIn 0.5s ease-out',
+    width: '100%',
+    minWidth: 0,
   }
 };
 

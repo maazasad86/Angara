@@ -31,9 +31,9 @@ const CategoryFormModal = ({ onClose, onAdd, existingCategories = [] }) => {
         <form onSubmit={handleSubmit} style={styles.form}>
           <div style={styles.formGroup}>
             <label style={styles.label}>Category Name</label>
-            <input 
-              type="text" 
-              value={name} 
+            <input
+              type="text"
+              value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Burgers"
               required
@@ -48,9 +48,9 @@ const CategoryFormModal = ({ onClose, onAdd, existingCategories = [] }) => {
           </div>
           <div style={styles.formGroup}>
             <label style={styles.label}>Sub Categories (comma separated)</label>
-            <input 
-              type="text" 
-              value={subCategoriesInput} 
+            <input
+              type="text"
+              value={subCategoriesInput}
               onChange={(e) => setSubCategoriesInput(e.target.value)}
               placeholder="e.g. Burgers, Pizzas, Drinks"
             />
@@ -95,20 +95,20 @@ const Categories = () => {
     try {
       // Check if the category already exists
       const existing = categories.find(c => c.name.toLowerCase() === name.toLowerCase());
-      
+
       if (existing) {
         // Merge existing subcategories with new ones, avoiding duplicates
         const mergedSubCategories = Array.from(new Set([...(existing.subCategories || []), ...subCategories]));
-        
-        await axios.put(`http://localhost:5000/api/categories/${existing._id}`, { 
-          name: existing.name, 
-          subCategories: mergedSubCategories 
+
+        await axios.put(`http://localhost:5000/api/categories/${existing._id}`, {
+          name: existing.name,
+          subCategories: mergedSubCategories
         });
       } else {
         // Create new category
         await axios.post('http://localhost:5000/api/categories', { name, subCategories });
       }
-      
+
       setShowModal(false);
       fetchCategories();
     } catch (err) {
@@ -140,9 +140,9 @@ const Categories = () => {
   const handleUpdate = async (id) => {
     try {
       const subCategories = editSubCategories.split(',').map(s => s.trim()).filter(s => s);
-      await axios.put(`http://localhost:5000/api/categories/${id}`, { 
-        name: editName, 
-        subCategories 
+      await axios.put(`http://localhost:5000/api/categories/${id}`, {
+        name: editName,
+        subCategories
       });
       setIsEditing(null);
       fetchCategories();
@@ -183,8 +183,8 @@ const Categories = () => {
                 <tr key={cat._id} style={styles.tr}>
                   <td style={styles.td}>
                     {isEditing === cat._id ? (
-                      <input 
-                        value={editName} 
+                      <input
+                        value={editName}
                         onChange={(e) => setEditName(e.target.value)}
                         style={styles.inlineInput}
                       />
@@ -194,8 +194,8 @@ const Categories = () => {
                   </td>
                   <td style={styles.td}>
                     {isEditing === cat._id ? (
-                      <input 
-                        value={editSubCategories} 
+                      <input
+                        value={editSubCategories}
                         onChange={(e) => setEditSubCategories(e.target.value)}
                         style={styles.inlineInput}
                       />
@@ -246,14 +246,14 @@ const Categories = () => {
       </div>
 
       {showModal && (
-        <CategoryFormModal 
+        <CategoryFormModal
           onClose={() => setShowModal(false)}
           onAdd={handleAdd}
           existingCategories={categories}
         />
       )}
 
-      <ConfirmModal 
+      <ConfirmModal
         isOpen={!!deleteId}
         onClose={() => setDeleteId(null)}
         onConfirm={handleDelete}
@@ -269,16 +269,16 @@ const styles = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: '2rem',
+    marginBottom: '1.25rem',
   },
   sectionTitle: {
-    fontSize: '1.5rem',
-    fontWeight: '700',
+    fontSize: '1.3rem',
+    fontWeight: '800',
     color: 'var(--text-main)',
   },
   sectionSubtitle: {
     color: 'var(--text-muted)',
-    fontSize: '0.9rem',
+    fontSize: '0.8rem',
   },
   tableCard: {
     padding: '1rem',
