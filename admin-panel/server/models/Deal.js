@@ -15,6 +15,10 @@ const DealSchema = new mongoose.Schema({
             quantity: {
                 type: Number,
                 required: true
+            },
+            variant: {
+                type: String,
+                default: null
             }
         }
     ],

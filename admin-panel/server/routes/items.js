@@ -30,7 +30,11 @@ router.post('/', upload.single('image'), async (req, res) => {
         // Parse variants if sent as JSON string
         let parsedVariants = [];
         if (variants) {
-            try { parsedVariants = JSON.parse(variants); } catch(e) {}
+            if (typeof variants === 'string') {
+                try { parsedVariants = JSON.parse(variants); } catch(e) {}
+            } else if (Array.isArray(variants)) {
+                parsedVariants = variants;
+            }
         }
 
         const newItem = new Item({ 
@@ -57,6 +61,24 @@ router.put('/:id', upload.single('image'), async (req, res) => {
         if (req.file) {
             const result = await uploadToCloudinary(req.file.buffer, req.file.mimetype);
             updateData.image = result.secure_url;
+        }
+
+        if (updateData.variants) {
+            if (typeof updateData.variants === 'string') {
+                try { 
+                    updateData.variants = JSON.parse(updateData.variants); 
+                } catch(e) {
+                    console.error("JSON PARSE ERROR IN PUT:", e);
+                }
+            }
+        } else {
+            updateData.variants = [];
+        }
+
+        if (updateData.variants.length > 0) {
+            updateData.price = 0;
+        } else if (updateData.price) {
+            updateData.price = Number(updateData.price);
         }
 
         const updatedItem = await Item.findByIdAndUpdate(

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import Layout from '../components/Layout';
 import { Spinner } from '../components/ui/spinner-1';
@@ -39,6 +39,16 @@ const POS = () => {
   const [shiftData, setShiftData] = useState(null);
   const [drawerCashInput, setDrawerCashInput] = useState('');
 
+  // Variant Selection State
+  const [showVariantModal, setShowVariantModal] = useState(false);
+  const [selectedVariantItem, setSelectedVariantItem] = useState(null);
+  const [variantQuantities, setVariantQuantities] = useState({});
+
+  // Deal Variant Selection State
+  const [showDealVariantModal, setShowDealVariantModal] = useState(false);
+  const [selectedDealForVariants, setSelectedDealForVariants] = useState(null);
+  const [selectedDealVariants, setSelectedDealVariants] = useState({});
+
   useEffect(() => {
     fetchData();
     const storedHolds = localStorage.getItem('angaara_held_orders');
@@ -66,13 +76,97 @@ const POS = () => {
     }
   };
 
-  const addToCart = (item) => {
-    setCart(prev => {
-      const existing = prev.find(i => i._id === item._id);
-      if (existing) {
-        return prev.map(i => i._id === item._id ? { ...i, quantity: i.quantity + 1 } : i);
+  const addToCart = (item, chosenVariant = null, chosenDealItemVariants = null, customQuantity = 1) => {
+    // 1. If it's a Deal
+    if (item.items) {
+      // Find sub-items that have variants but DO NOT have a preset variant selected in the deal config
+      const itemsWithVariants = item.items.filter(di => di.item && di.item.variants && di.item.variants.length > 0 && !di.variant);
+      if (itemsWithVariants.length > 0 && !chosenDealItemVariants) {
+        setSelectedDealForVariants(item);
+        // Pre-select the first variant for each item that needs selection
+        const initialSelections = {};
+        item.items.forEach((di, idx) => {
+          if (di.item && di.item.variants && di.item.variants.length > 0 && !di.variant) {
+            initialSelections[idx] = di.item.variants[0];
+          }
+        });
+        setSelectedDealVariants(initialSelections);
+        setShowDealVariantModal(true);
+        return;
       }
-      return [...prev, { ...item, quantity: 1 }];
+    }
+
+    // 2. If it's a regular item that has variants and no variant has been selected yet
+    if (!item.items && item.variants && item.variants.length > 0 && !chosenVariant) {
+      setSelectedVariantItem(item);
+      const initialQuantities = {};
+      item.variants.forEach(v => {
+        initialQuantities[v.name] = 0;
+      });
+      if (item.variants.length > 0) {
+        initialQuantities[item.variants[0].name] = 1;
+      }
+      setVariantQuantities(initialQuantities);
+      setShowVariantModal(true);
+      return;
+    }
+
+    setCart(prev => {
+      let cartItemId = item._id;
+      let itemName = item.name;
+      let itemPrice = item.price;
+      let clonedItems = item.items ? [...item.items] : null;
+
+      if (item.items) {
+        // Build the unique suffix by combining preset variants and custom chosen variants
+        const suffixParts = [];
+        clonedItems = item.items.map((di, idx) => {
+          let vName = di.variant;
+          if (chosenDealItemVariants && chosenDealItemVariants[idx]) {
+            vName = chosenDealItemVariants[idx].name;
+          }
+          if (vName) {
+            suffixParts.push(`${idx}-${vName}`);
+            return {
+              ...di,
+              chosenVariant: vName
+            };
+          }
+          return di;
+        });
+
+        if (suffixParts.length > 0) {
+          cartItemId = `${item._id}-${suffixParts.join('-')}`;
+          
+          // Construct inline text description of selected variants
+          const selectedText = clonedItems
+            .filter(di => di.chosenVariant)
+            .map(di => di.chosenVariant)
+            .join(', ');
+          
+          itemName = `${item.name} (${selectedText})`;
+        }
+      } else if (chosenVariant) {
+        // Regular item with variant
+        cartItemId = `${item._id}-${chosenVariant.name}`;
+        itemName = `${item.name} (${chosenVariant.name})`;
+        itemPrice = chosenVariant.price;
+      }
+
+      const existing = prev.find(i => i._id === cartItemId);
+      if (existing) {
+        return prev.map(i => i._id === cartItemId ? { ...i, quantity: i.quantity + customQuantity } : i);
+      }
+      return [...prev, { 
+        ...item, 
+        _id: cartItemId, 
+        originalId: item._id,
+        name: itemName, 
+        price: itemPrice, 
+        items: clonedItems,
+        chosenVariant: chosenVariant ? chosenVariant.name : null,
+        quantity: customQuantity 
+      }];
     });
   };
 
@@ -99,6 +193,43 @@ const POS = () => {
         const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
         return matchesCategory && matchesSearch;
       });
+
+  const groupedItems = useMemo(() => {
+    if (activeCategory === 'Deals') {
+      return { 'Deals': displayItems };
+    }
+    
+    const groups = {};
+    displayItems.forEach(item => {
+      const sub = item.subCategory && item.subCategory.trim() ? item.subCategory.trim() : 'Uncategorized';
+      if (!groups[sub]) {
+        groups[sub] = [];
+      }
+      groups[sub].push(item);
+    });
+    
+    // Sort keys based on category's defined subCategories array
+    const currentCategoryObj = categories.find(cat => cat.name === activeCategory);
+    const orderedSubCats = currentCategoryObj?.subCategories || [];
+    
+    const sortedGroups = {};
+    
+    // First, add groups in the order specified by the category
+    orderedSubCats.forEach(sub => {
+      const matchingKey = Object.keys(groups).find(k => k.toLowerCase() === sub.toLowerCase());
+      if (matchingKey) {
+        sortedGroups[matchingKey] = groups[matchingKey];
+        delete groups[matchingKey];
+      }
+    });
+    
+    // Then, add any remaining groups (e.g. Uncategorized or dynamically added ones)
+    Object.keys(groups).forEach(key => {
+      sortedGroups[key] = groups[key];
+    });
+    
+    return sortedGroups;
+  }, [displayItems, activeCategory, categories]);
 
   const handlePrintKOT = () => {
     setPrintType('KOT');
@@ -206,7 +337,7 @@ const POS = () => {
     setPrintType('RECEIPT');
     try {
       const saleItems = cart.map(item => ({
-        itemId: item._id,
+        itemId: item.originalId || item._id,
         name: item.name,
         type: item.items ? 'deal' : 'item',
         categoryName: item.items ? 'Deals' : (item.category?.name || 'Uncategorized'),
@@ -291,69 +422,108 @@ const POS = () => {
             </div>
           </div>
 
-          <div className="items-grid" style={styles.itemsGrid}>
+          <div className="items-container" style={styles.itemsContainer}>
             {loading ? (
-              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '4rem', gridColumn: '1 / -1' }}>
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '4rem', width: '100%' }}>
                 <Spinner size={40} color="var(--primary-yellow)" />
               </div>
-            ) : displayItems.length > 0 ? (
-              displayItems.map(item => {
-                const isDeal = !!item.items;
-                if (isDeal) {
-                  return (
-                    <div 
-                      key={item._id} 
-                      className="glass-card" 
-                      style={styles.itemCard}
-                      onClick={() => addToCart(item)}
-                    >
-                      <div style={styles.itemImageContainer}>
-                        {item.image ? (
-                          <img src={item.image} alt={item.name} style={styles.itemImage} />
-                        ) : (
-                          <div style={styles.dealPlaceholder}>
-                            <Tag size={40} style={{ color: 'var(--primary-yellow)' }} />
-                          </div>
-                        )}
-                        <div style={styles.priceBadge}>Rs. {item.price}</div>
-                      </div>
-                      <div style={styles.dealCardInfo}>
-                        <div style={styles.dealTextContainer}>
-                          <h4 style={styles.itemName} title={item.name}>{item.name}</h4>
-                          <p style={styles.dealItemsText} title={item.items.map(di => `${di.quantity}x ${di.item?.name || 'Item'}`).join(', ')}>
-                            {item.items.map(di => `${di.quantity}x ${di.item?.name || 'Item'}`).join(', ')}
-                          </p>
-                        </div>
-                        <div style={styles.addBtn}>
-                          <Plus size={16} />
-                        </div>
-                      </div>
-                    </div>
-                  );
-                }
-
+            ) : Object.keys(groupedItems).length > 0 ? (
+              Object.keys(groupedItems).map(subCat => {
+                const groupItems = groupedItems[subCat];
+                const showHeading = Object.keys(groupedItems).length > 1 || (subCat !== 'Uncategorized' && subCat !== 'Deals');
+                
                 return (
-                  <div 
-                    key={item._id} 
-                    className="glass-card" 
-                    style={styles.itemCard}
-                    onClick={() => addToCart(item)}
-                  >
-                    <div style={styles.itemImageContainer}>
-                      {item.image ? (
-                        <img src={item.image} alt={item.name} style={styles.itemImage} />
-                      ) : (
-                        <div style={styles.dealPlaceholder}>
-                          <Tag size={40} style={{ color: 'var(--primary-yellow)' }} />
-                        </div>
-                      )}
-                      <div style={styles.priceBadge}>Rs. {item.price}</div>
-                    </div>
-                    <div style={styles.cardInfo}>
-                      <h4 style={styles.itemName}>{item.name}</h4>
-                      <div style={styles.addBtn}>
-                        <Plus size={16} />
-                      </div>
+                  <div key={subCat} style={styles.subCatSection}>
+                    {showHeading && (
+                      <h4 style={styles.subCatHeading}>{subCat}</h4>
+                    )}
+                    <div className="items-grid" style={styles.itemsGrid}>
+                      {groupItems.map(item => {
+                        const isDeal = !!item.items;
+                        if (isDeal) {
+                          return (
+                            <div 
+                              key={item._id} 
+                              className="glass-card" 
+                              style={styles.itemCard}
+                              onClick={() => addToCart(item)}
+                            >
+                              <div style={styles.itemImageContainer}>
+                                {item.image ? (
+                                  <img src={item.image} alt={item.name} style={styles.itemImage} />
+                                ) : (
+                                  <div style={styles.dealPlaceholder}>
+                                    <Tag size={40} style={{ color: 'var(--primary-yellow)' }} />
+                                  </div>
+                                )}
+                                <div style={styles.priceBadge}>Rs. {item.price}</div>
+                              </div>
+                              <div style={styles.cardInfo}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', overflow: 'hidden', flex: 1 }}>
+                                  <h4 style={{ ...styles.itemName, margin: 0 }} title={item.name}>{item.name}</h4>
+                                  <p style={styles.dealItemsText} title={item.items.map(di => `${di.quantity}x ${di.item?.name || 'Item'}`).join(', ')}>
+                                    {item.items.map(di => `${di.quantity}x ${di.item?.name || 'Item'}`).join(', ')}
+                                  </p>
+                                </div>
+                                <div style={styles.addBtn}>
+                                  <Plus size={16} />
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div 
+                            key={item._id} 
+                            className="glass-card" 
+                            style={styles.itemCard}
+                            onClick={() => addToCart(item)}
+                          >
+                            <div style={styles.itemImageContainer}>
+                              {item.image ? (
+                                <img src={item.image} alt={item.name} style={styles.itemImage} />
+                              ) : (
+                                <div style={styles.dealPlaceholder}>
+                                  <Tag size={40} style={{ color: 'var(--primary-yellow)' }} />
+                                </div>
+                              )}
+                              <div style={styles.priceBadge}>
+                                {item.variants && item.variants.length > 0 ? (
+                                  `Rs. ${Math.min(...item.variants.map(v => v.price || 0))}+`
+                                ) : (
+                                  `Rs. ${item.price}`
+                                )}
+                              </div>
+                            </div>
+                            <div style={styles.cardInfo}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', overflow: 'hidden', flex: 1 }}>
+                                <h4 style={{ ...styles.itemName, margin: 0 }} title={item.name}>{item.name}</h4>
+                                {item.variants && item.variants.length > 0 && (
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px', marginTop: '4px' }}>
+                                    {item.variants.map((v, i) => (
+                                      <span key={i} style={{
+                                        fontSize: '0.65rem',
+                                        padding: '1px 4px',
+                                        borderRadius: '4px',
+                                        backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                                        color: 'var(--text-muted)',
+                                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                                        whiteSpace: 'nowrap'
+                                      }}>
+                                        {v.name}: {v.price}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                              <div style={styles.addBtn}>
+                                <Plus size={16} />
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 );
@@ -423,7 +593,10 @@ const POS = () => {
                         {item.items.map((di, idx) => (
                           <div key={idx} style={styles.dealItemCard}>
                             <span style={styles.dealItemQty}>{di.quantity}x</span>
-                            <span style={styles.dealItemName}>{di.item?.name || 'Item'}</span>
+                            <span style={styles.dealItemName}>
+                              {di.item?.name || 'Item'}
+                              {(di.variant || di.chosenVariant) ? ` (${di.variant || di.chosenVariant})` : ''}
+                            </span>
                           </div>
                         ))}
                       </div>
@@ -521,7 +694,7 @@ const POS = () => {
               <div style={{ paddingLeft: '1rem', fontSize: '0.85rem', color: '#555', marginTop: '0.15rem' }}>
                 {item.items.map((di, idx) => (
                   <div key={idx}>
-                    - {di.quantity}x {di.item?.name || 'Item'}
+                    - {di.quantity}x {di.item?.name || 'Item'}{(di.variant || di.chosenVariant) ? ` (${di.variant || di.chosenVariant})` : ''}
                   </div>
                 ))}
               </div>
@@ -723,6 +896,205 @@ const POS = () => {
           </div>
         </div>
       )}
+      {/* Variant Selection Modal */}
+      {showVariantModal && selectedVariantItem && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'fadeIn 0.2s ease-out' }}>
+          <div className="glass-card" style={{ width: '380px', padding: '1.5rem', animation: 'scaleIn 0.2s ease-out' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <h3 style={{ color: 'var(--text-main)', fontSize: '1.15rem', fontWeight: '800', margin: 0 }}>Select Variant / Option</h3>
+              <button onClick={() => setShowVariantModal(false)} style={{ backgroundColor: 'transparent', border: 'none', color: 'var(--text-main)', cursor: 'pointer', padding: 0 }}><X size={20} /></button>
+            </div>
+            
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+              Choose quantities for <strong style={{ color: 'var(--text-main)' }}>{selectedVariantItem.name}</strong> options:
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
+              {selectedVariantItem.variants.map((v, idx) => {
+                const qty = variantQuantities[v.name] || 0;
+                return (
+                  <div 
+                    key={idx} 
+                    style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'space-between', 
+                      padding: '0.75rem 1rem', 
+                      borderRadius: '10px', 
+                      border: '1px solid', 
+                      borderColor: qty > 0 ? 'var(--primary-yellow)' : 'var(--glass-border)',
+                      backgroundColor: qty > 0 ? 'rgba(250, 204, 21, 0.05)' : 'rgba(255, 255, 255, 0.02)',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span style={{ fontSize: '0.9rem', fontWeight: '600', color: 'var(--text-main)' }}>{v.name}</span>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--primary-yellow)', fontWeight: '700' }}>Rs. {v.price}</span>
+                    </div>
+                    
+                    {/* Quantity Selector for this variant */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          setVariantQuantities(prev => ({
+                            ...prev,
+                            [v.name]: Math.max(0, qty - 1)
+                          }));
+                        }}
+                        style={{ width: '28px', height: '28px', borderRadius: '8px', backgroundColor: 'var(--glass)', border: '1px solid var(--glass-border)', color: 'var(--text-main)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                      >
+                        <Minus size={14} />
+                      </button>
+                      <span style={{ fontSize: '0.95rem', fontWeight: '700', color: qty > 0 ? 'var(--text-main)' : 'var(--text-muted)', minWidth: '20px', textAlign: 'center' }}>
+                        {qty}
+                      </span>
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          setVariantQuantities(prev => ({
+                            ...prev,
+                            [v.name]: qty + 1
+                          }));
+                        }}
+                        style={{ width: '28px', height: '28px', borderRadius: '8px', backgroundColor: 'var(--glass)', border: '1px solid var(--glass-border)', color: 'var(--text-main)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                      >
+                        <Plus size={14} />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.8rem' }}>
+              <button 
+                onClick={() => setShowVariantModal(false)} 
+                style={{ flex: 1, padding: '0.75rem', backgroundColor: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-main)', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem' }}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => {
+                  let addedAny = false;
+                  selectedVariantItem.variants.forEach(v => {
+                    const qty = variantQuantities[v.name] || 0;
+                    if (qty > 0) {
+                      addToCart(selectedVariantItem, v, null, qty);
+                      addedAny = true;
+                    }
+                  });
+                  if (addedAny) {
+                    setShowVariantModal(false);
+                    setSelectedVariantItem(null);
+                    setVariantQuantities({});
+                  }
+                }} 
+                style={{ flex: 2, padding: '0.75rem', backgroundColor: 'var(--primary-yellow)', color: '#000', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '800', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                disabled={!Object.values(variantQuantities).some(q => q > 0)}
+              >
+                Add to Cart
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Deal Variant Selection Modal */}
+      {showDealVariantModal && selectedDealForVariants && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'fadeIn 0.2s ease-out' }}>
+          <div className="glass-card" style={{ width: '420px', padding: '1.5rem', maxHeight: '85vh', overflowY: 'auto', animation: 'scaleIn 0.2s ease-out' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <h3 style={{ color: 'var(--text-main)', fontSize: '1.15rem', fontWeight: '800', margin: 0 }}>Select Variants for Deal</h3>
+              <button onClick={() => setShowDealVariantModal(false)} style={{ backgroundColor: 'transparent', border: 'none', color: 'var(--text-main)', cursor: 'pointer', padding: 0 }}><X size={20} /></button>
+            </div>
+            
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
+              Choose options for the items in <strong style={{ color: 'var(--text-main)' }}>{selectedDealForVariants.name}</strong>:
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginBottom: '1.5rem' }}>
+              {selectedDealForVariants.items.map((di, idx) => {
+                const hasVariants = di.item && di.item.variants && di.item.variants.length > 0;
+                if (!hasVariants) return null;
+
+                return (
+                  <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <div style={{ fontSize: '0.9rem', fontWeight: '700', color: 'var(--text-main)' }}>
+                      {di.item.name} <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: 'var(--text-muted)' }}>(Qty: {di.quantity})</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      {di.item.variants.map((v, vIdx) => {
+                        const isSelected = selectedDealVariants[idx]?.name === v.name;
+                        return (
+                          <label 
+                            key={vIdx}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '0.6rem 0.8rem',
+                              borderRadius: '8px',
+                              border: '1px solid',
+                              borderColor: isSelected ? 'var(--primary-yellow)' : 'var(--glass-border)',
+                              backgroundColor: isSelected ? 'rgba(250, 204, 21, 0.05)' : 'rgba(255, 255, 255, 0.01)',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s'
+                            }}
+                            onClick={() => {
+                              setSelectedDealVariants(prev => ({
+                                ...prev,
+                                [idx]: v
+                              }));
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <input 
+                                type="radio"
+                                name={`deal-variant-group-${idx}`}
+                                checked={isSelected}
+                                onChange={() => {
+                                  setSelectedDealVariants(prev => ({
+                                    ...prev,
+                                    [idx]: v
+                                  }));
+                                }}
+                                style={{ cursor: 'pointer', width: '15px', height: '15px', accentColor: 'var(--primary-yellow)' }}
+                              />
+                              <span style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-main)' }}>{v.name}</span>
+                            </div>
+                            <span style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--primary-yellow)' }}>Rs. {v.price}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.8rem' }}>
+              <button 
+                onClick={() => setShowDealVariantModal(false)} 
+                style={{ flex: 1, padding: '0.75rem', backgroundColor: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-main)', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem' }}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => {
+                  addToCart(selectedDealForVariants, null, selectedDealVariants);
+                  setShowDealVariantModal(false);
+                  setSelectedDealForVariants(null);
+                  setSelectedDealVariants({});
+                }} 
+                style={{ flex: 2, padding: '0.75rem', backgroundColor: 'var(--primary-yellow)', color: '#000', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '800', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                Confirm Options
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 };
@@ -778,13 +1150,32 @@ const styles = {
     whiteSpace: 'nowrap',
     transition: 'all 0.3s ease',
   },
-  itemsGrid: {
+  itemsContainer: {
     flex: 1,
     overflowY: 'auto',
-    display: 'grid',
-    gridTemplateColumns: 'repeat(3, 1fr)',
-    gap: '1rem',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1.5rem',
     paddingRight: '0.55rem',
+  },
+  subCatSection: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.75rem',
+  },
+  subCatHeading: {
+    fontSize: '0.9rem',
+    fontWeight: '800',
+    color: 'var(--text-muted)',
+    borderBottom: '1px solid var(--glass-border)',
+    paddingBottom: '0.3rem',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
+  },
+  itemsGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+    gap: '1rem',
   },
   itemCard: {
     padding: '0.75rem',
@@ -800,11 +1191,12 @@ const styles = {
     aspectRatio: '4/3',
     borderRadius: '8px',
     overflow: 'hidden',
+    backgroundColor: 'rgba(0,0,0,0.15)',
   },
   itemImage: {
     width: '100%',
     height: '100%',
-    objectFit: 'cover',
+    objectFit: 'contain',
   },
   priceBadge: {
     position: 'absolute',

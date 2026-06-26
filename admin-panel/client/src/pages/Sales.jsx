@@ -22,7 +22,42 @@ const Sales = () => {
   // Filters
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [itemSearchQuery, setItemSearchQuery] = useState('');
-  const [dateFilter, setDateFilter] = useState('all'); // all, today, 7days, 30days
+  const [dateFilter, setDateFilter] = useState('all'); // all, today, 7days, 30days, custom
+  const [customDateType, setCustomDateType] = useState('day'); // day, week, month, range
+  const [customSingleDate, setCustomSingleDate] = useState(() => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  });
+  const [customWeekStart, setCustomWeekStart] = useState(() => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  });
+  const [customMonth, setCustomMonth] = useState(() => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    return `${y}-${m}`;
+  });
+  const [customRangeStart, setCustomRangeStart] = useState(() => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  });
+  const [customRangeEnd, setCustomRangeEnd] = useState(() => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  });
   
   // Tabs
   const [activeTab, setActiveTab] = useState('itemized'); // itemized, transactions
@@ -33,7 +68,18 @@ const Sales = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [activeTab, categoryFilter, itemSearchQuery, dateFilter]);
+  }, [
+    activeTab, 
+    categoryFilter, 
+    itemSearchQuery, 
+    dateFilter, 
+    customDateType, 
+    customSingleDate, 
+    customWeekStart, 
+    customMonth, 
+    customRangeStart, 
+    customRangeEnd
+  ]);
 
   useEffect(() => {
     fetchData();
@@ -61,19 +107,54 @@ const Sales = () => {
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
     
     return sales.filter(sale => {
-      const saleDate = new Date(sale.createdAt).getTime();
+      const saleDate = new Date(sale.createdAt);
+      const saleDateTime = saleDate.getTime();
+      
       if (dateFilter === 'today') {
-        return saleDate >= todayStart;
+        return saleDateTime >= todayStart;
       } else if (dateFilter === '7days') {
         const sevenDaysAgo = todayStart - 7 * 24 * 60 * 60 * 1000;
-        return saleDate >= sevenDaysAgo;
+        return saleDateTime >= sevenDaysAgo;
       } else if (dateFilter === '30days') {
         const thirtyDaysAgo = todayStart - 30 * 24 * 60 * 60 * 1000;
-        return saleDate >= thirtyDaysAgo;
+        return saleDateTime >= thirtyDaysAgo;
+      } else if (dateFilter === 'custom') {
+        if (customDateType === 'day' && customSingleDate) {
+          const y = saleDate.getFullYear();
+          const m = String(saleDate.getMonth() + 1).padStart(2, '0');
+          const d = String(saleDate.getDate()).padStart(2, '0');
+          const localSaleDateStr = `${y}-${m}-${d}`;
+          return localSaleDateStr === customSingleDate;
+        } else if (customDateType === 'week' && customWeekStart) {
+          const start = new Date(customWeekStart);
+          start.setHours(0, 0, 0, 0);
+          const end = new Date(start.getTime() + 7 * 24 * 60 * 60 * 1000 - 1);
+          return saleDateTime >= start.getTime() && saleDateTime <= end.getTime();
+        } else if (customDateType === 'month' && customMonth) {
+          const y = saleDate.getFullYear();
+          const m = String(saleDate.getMonth() + 1).padStart(2, '0');
+          const localSaleMonthStr = `${y}-${m}`;
+          return localSaleMonthStr === customMonth;
+        } else if (customDateType === 'range') {
+          let startValid = true;
+          let endValid = true;
+          
+          if (customRangeStart) {
+            const start = new Date(customRangeStart);
+            start.setHours(0, 0, 0, 0);
+            startValid = saleDateTime >= start.getTime();
+          }
+          if (customRangeEnd) {
+            const end = new Date(customRangeEnd);
+            end.setHours(23, 59, 59, 999);
+            endValid = saleDateTime <= end.getTime();
+          }
+          return startValid && endValid;
+        }
       }
       return true; // all
     });
-  }, [sales, dateFilter]);
+  }, [sales, dateFilter, customDateType, customSingleDate, customWeekStart, customMonth, customRangeStart, customRangeEnd]);
 
   // 2. Aggregate Itemized Sales from Sales list
   const allItemizedSales = useMemo(() => {
@@ -187,6 +268,7 @@ const Sales = () => {
                 { value: 'today', label: 'Today' },
                 { value: '7days', label: '7 Days' },
                 { value: '30days', label: '30 Days' },
+                { value: 'custom', label: 'Custom' },
               ].map(preset => (
                 <button
                   key={preset.value}
@@ -207,6 +289,93 @@ const Sales = () => {
               <RefreshCw size={16} />
             </button>
           </div>
+
+          {dateFilter === 'custom' && (
+            <div style={styles.customFilterRow}>
+              {/* Custom Type Selector */}
+              <div style={styles.customTypePills}>
+                {[
+                  { value: 'day', label: 'Single Day' },
+                  { value: 'week', label: 'Specific Week' },
+                  { value: 'month', label: 'Specific Month' },
+                  { value: 'range', label: 'Custom Range' }
+                ].map(type => (
+                  <button
+                    key={type.value}
+                    onClick={() => setCustomDateType(type.value)}
+                    style={{
+                      ...styles.customTypePill,
+                      backgroundColor: customDateType === type.value ? 'var(--primary-yellow)' : 'rgba(255, 255, 255, 0.03)',
+                      color: customDateType === type.value ? '#000000' : 'var(--text-muted)',
+                      borderColor: customDateType === type.value ? 'var(--primary-yellow)' : 'var(--glass-border)'
+                    }}
+                  >
+                    {type.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Input Selectors */}
+              <div style={styles.customInputsContainer}>
+                {customDateType === 'day' && (
+                  <div style={styles.inputWithLabel}>
+                    <span style={styles.inputLabel}>Select Day:</span>
+                    <input 
+                      type="date" 
+                      value={customSingleDate} 
+                      onChange={(e) => setCustomSingleDate(e.target.value)} 
+                      style={styles.datePickerInput}
+                    />
+                  </div>
+                )}
+                {customDateType === 'week' && (
+                  <div style={styles.inputWithLabel}>
+                    <span style={styles.inputLabel}>Week Starting:</span>
+                    <input 
+                      type="date" 
+                      value={customWeekStart} 
+                      onChange={(e) => setCustomWeekStart(e.target.value)} 
+                      style={styles.datePickerInput}
+                    />
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>(Fetches 7 days)</span>
+                  </div>
+                )}
+                {customDateType === 'month' && (
+                  <div style={styles.inputWithLabel}>
+                    <span style={styles.inputLabel}>Select Month:</span>
+                    <input 
+                      type="month" 
+                      value={customMonth} 
+                      onChange={(e) => setCustomMonth(e.target.value)} 
+                      style={styles.datePickerInput}
+                    />
+                  </div>
+                )}
+                {customDateType === 'range' && (
+                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div style={styles.inputWithLabel}>
+                      <span style={styles.inputLabel}>From:</span>
+                      <input 
+                        type="date" 
+                        value={customRangeStart} 
+                        onChange={(e) => setCustomRangeStart(e.target.value)} 
+                        style={styles.datePickerInput}
+                      />
+                    </div>
+                    <div style={styles.inputWithLabel}>
+                      <span style={styles.inputLabel}>To:</span>
+                      <input 
+                        type="date" 
+                        value={customRangeEnd} 
+                        onChange={(e) => setCustomRangeEnd(e.target.value)} 
+                        style={styles.datePickerInput}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Metrics Row */}
@@ -646,6 +815,56 @@ const styles = {
     fontSize: '0.85rem',
     color: 'var(--text-muted)',
     fontWeight: '600'
+  },
+  customFilterRow: {
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: '1.5rem',
+    marginTop: '1rem',
+    paddingTop: '1rem',
+    borderTop: '1px dashed var(--glass-border)',
+  },
+  customTypePills: {
+    display: 'flex',
+    gap: '0.4rem',
+  },
+  customTypePill: {
+    padding: '0.4rem 0.8rem',
+    borderRadius: '6px',
+    border: '1px solid',
+    fontSize: '0.75rem',
+    fontWeight: '600',
+    cursor: 'pointer',
+    transition: 'all 0.3s ease',
+  },
+  customInputsContainer: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '1rem',
+    flex: 1,
+  },
+  inputWithLabel: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+  },
+  inputLabel: {
+    fontSize: '0.8rem',
+    fontWeight: '600',
+    color: 'var(--text-muted)',
+    whiteSpace: 'nowrap',
+  },
+  datePickerInput: {
+    padding: '0.4rem 0.6rem',
+    borderRadius: '6px',
+    border: '1px solid var(--glass-border)',
+    backgroundColor: 'var(--glass)',
+    color: 'var(--text-main)',
+    fontSize: '0.8rem',
+    outline: 'none',
+    width: 'auto',
   }
 };
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import Layout from '../components/Layout';
 import ConfirmModal from '../components/ConfirmModal';
@@ -20,7 +20,8 @@ const Items = () => {
     category: '',
     subCategory: '',
     price: '',
-    image: null
+    image: null,
+    variants: []
   });
   const [imagePreview, setImagePreview] = useState(null);
   
@@ -62,13 +63,36 @@ const Items = () => {
     }
   };
 
+  const handleAddVariant = () => {
+    setFormData(prev => ({
+      ...prev,
+      variants: [...prev.variants, { name: '', price: '' }]
+    }));
+  };
+
+  const handleVariantChange = (index, field, value) => {
+    setFormData(prev => {
+      const updated = [...prev.variants];
+      updated[index] = { ...updated[index], [field]: value };
+      return { ...prev, variants: updated };
+    });
+  };
+
+  const handleRemoveVariant = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      variants: prev.variants.filter((_, i) => i !== index)
+    }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     const data = new FormData();
     data.append('name', formData.name);
     data.append('category', formData.category);
     data.append('subCategory', formData.subCategory);
-    data.append('price', formData.price);
+    data.append('price', formData.variants.length > 0 ? 0 : formData.price);
+    data.append('variants', JSON.stringify(formData.variants));
     if (formData.image) {
       data.append('image', formData.image);
     }
@@ -87,7 +111,7 @@ const Items = () => {
   };
 
   const resetForm = () => {
-    setFormData({ name: '', category: '', subCategory: '', price: '', image: null });
+    setFormData({ name: '', category: '', subCategory: '', price: '', image: null, variants: [] });
     setImagePreview(null);
     setShowModal(false);
     setIsEditing(null);
@@ -99,8 +123,9 @@ const Items = () => {
       name: item.name,
       category: item.category?._id || '',
       subCategory: item.subCategory || '',
-      price: item.price,
-      image: null
+      price: item.variants && item.variants.length > 0 ? '' : item.price,
+      image: null,
+      variants: item.variants || []
     });
     setImagePreview(item.image);
     setShowModal(true);
@@ -134,6 +159,40 @@ const Items = () => {
   const filteredItems = items.filter(item => 
     activeCategory === 'All' || item.category?.name === activeCategory
   );
+
+  // Group filteredItems by subCategory
+  const groupedItems = useMemo(() => {
+    const groups = {};
+    filteredItems.forEach(item => {
+      const sub = item.subCategory && item.subCategory.trim() ? item.subCategory.trim() : 'Uncategorized';
+      if (!groups[sub]) {
+        groups[sub] = [];
+      }
+      groups[sub].push(item);
+    });
+
+    // Sort keys based on activeCategory's subCategories array
+    const currentCategoryObj = categories.find(cat => cat.name === activeCategory);
+    const orderedSubCats = currentCategoryObj?.subCategories || [];
+
+    const sortedGroups = {};
+
+    // First, add groups in the order specified by the category
+    orderedSubCats.forEach(sub => {
+      const matchingKey = Object.keys(groups).find(k => k.toLowerCase() === sub.toLowerCase());
+      if (matchingKey) {
+        sortedGroups[matchingKey] = groups[matchingKey];
+        delete groups[matchingKey];
+      }
+    });
+
+    // Then, add any remaining groups (e.g. Uncategorized or dynamically added ones)
+    Object.keys(groups).forEach(key => {
+      sortedGroups[key] = groups[key];
+    });
+
+    return sortedGroups;
+  }, [filteredItems, activeCategory, categories]);
 
   return (
     <Layout>
@@ -173,59 +232,94 @@ const Items = () => {
         ))}
       </div>
 
-      <div style={styles.grid}>
+      <div className="items-container" style={styles.itemsContainer}>
         {loading ? (
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '4rem', width: '100%' }}>
             <Spinner size={40} color="var(--primary-yellow)" />
           </div>
-        ) : filteredItems.length > 0 ? (
-          filteredItems.map((item) => (
-            <div key={item._id} className="glass-card hover-scale" style={styles.itemCard}>
-              <div style={styles.menuDotContainer}>
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowDropdown(showDropdown === item._id ? null : item._id);
-                  }} 
-                  style={styles.menuDotBtn}
-                >
-                  <MoreVertical size={16} />
-                </button>
-                {showDropdown === item._id && (
-                  <div style={styles.dropdownMenu}>
-                    <button onClick={() => { handleEdit(item); setShowDropdown(null); }} style={styles.dropdownItem}>
-                      <Edit2 size={14} style={{ marginRight: '0.4rem' }}/> Edit
-                    </button>
-                    <button onClick={() => { confirmDelete(item._id); setShowDropdown(null); }} style={{...styles.dropdownItem, color: 'var(--accent-red)'}}>
-                      <Trash2 size={14} style={{ marginRight: '0.4rem' }}/> Delete
-                    </button>
-                  </div>
-                )}
-              </div>
+        ) : Object.keys(groupedItems).length > 0 ? (
+          Object.keys(groupedItems).map(subCat => {
+            const groupItems = groupedItems[subCat];
+            const showHeading = Object.keys(groupedItems).length > 1 || (subCat !== 'Uncategorized');
 
-              <div style={styles.imageContainer}>
-                {item.image ? (
-                  <img src={item.image} alt={item.name} style={styles.itemImage} />
-                ) : (
-                  <div style={styles.placeholderContainer}>
-                    <Package size={32} color="var(--text-muted)" opacity={0.5} />
-                  </div>
+            return (
+              <div key={subCat} style={styles.subCatSection}>
+                {showHeading && (
+                  <h4 style={styles.subCatHeading}>{subCat}</h4>
                 )}
-                <div style={styles.itemCategoryBadge}>
-                  {item.category?.name || 'No Category'}
-                  {item.subCategory && <span style={{ opacity: 0.8, fontWeight: 'normal', marginLeft: '4px' }}>| {item.subCategory}</span>}
+                <div style={styles.grid}>
+                  {groupItems.map((item) => (
+                    <div key={item._id} className="glass-card hover-scale" style={styles.itemCard}>
+                      <div style={styles.menuDotContainer}>
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowDropdown(showDropdown === item._id ? null : item._id);
+                          }} 
+                          style={styles.menuDotBtn}
+                        >
+                          <MoreVertical size={16} />
+                        </button>
+                        {showDropdown === item._id && (
+                          <div style={styles.dropdownMenu}>
+                            <button onClick={() => { handleEdit(item); setShowDropdown(null); }} style={styles.dropdownItem}>
+                              <Edit2 size={14} style={{ marginRight: '0.4rem' }}/> Edit
+                            </button>
+                            <button onClick={() => { confirmDelete(item._id); setShowDropdown(null); }} style={{...styles.dropdownItem, color: 'var(--accent-red)'}}>
+                              <Trash2 size={14} style={{ marginRight: '0.4rem' }}/> Delete
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      <div style={styles.imageContainer}>
+                        {item.image ? (
+                          <img src={item.image} alt={item.name} style={styles.itemImage} />
+                        ) : (
+                          <div style={styles.placeholderContainer}>
+                            <Package size={32} color="var(--text-muted)" opacity={0.5} />
+                          </div>
+                        )}
+                        <div style={styles.itemCategoryBadge}>
+                          {item.category?.name || 'No Category'}
+                          {item.subCategory && <span style={{ opacity: 0.8, fontWeight: 'normal', marginLeft: '4px' }}>| {item.subCategory}</span>}
+                        </div>
+                      </div>
+
+                      <div style={styles.itemHeaderContainer}>
+                        <div style={styles.itemName}>{item.name}</div>
+                      </div>
+
+                      <div style={styles.itemPriceContainer}>
+                        {item.variants && item.variants.length > 0 ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', width: '100%' }}>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 'bold' }}>Variants:</div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                              {item.variants.map((v, idx) => (
+                                <span key={idx} style={{
+                                  fontSize: '0.65rem',
+                                  padding: '2px 6px',
+                                  borderRadius: '4px',
+                                  backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                                  color: 'var(--text-main)',
+                                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                                  whiteSpace: 'nowrap'
+                                }}>
+                                  {v.name}: Rs. {v.price}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        ) : (
+                          <div style={styles.itemPrice}>Rs. {item.price}</div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-
-              <div style={styles.itemHeaderContainer}>
-                <div style={styles.itemName}>{item.name}</div>
-              </div>
-
-              <div style={styles.itemPriceContainer}>
-                <div style={styles.itemPrice}>Rs. {item.price}</div>
-              </div>
-            </div>
-          ))
+            );
+          })
         ) : (
           <div style={styles.noItems}>
             <Package size={48} />
@@ -293,10 +387,11 @@ const Items = () => {
                     <input 
                       type="number" 
                       name="price" 
-                      value={formData.price} 
+                      value={formData.variants.length > 0 ? '' : formData.price} 
                       onChange={handleInputChange} 
-                      placeholder="e.g. 350"
-                      required 
+                      placeholder={formData.variants.length > 0 ? "Price defined in variants" : "e.g. 350"}
+                      required={formData.variants.length === 0}
+                      disabled={formData.variants.length > 0} 
                     />
                   </div>
                 </div>
@@ -321,6 +416,54 @@ const Items = () => {
                       accept="image/*"
                     />
                   </div>
+                </div>
+
+                {/* Variants Section */}
+                <div style={{ gridColumn: '1 / -1', marginTop: '0.5rem', borderTop: '1px solid var(--glass-border)', paddingTop: '1rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.8rem' }}>
+                    <h4 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-main)', fontWeight: '800' }}>Item Variants / Options (Optional)</h4>
+                    <button 
+                      type="button" 
+                      onClick={handleAddVariant} 
+                      style={{ fontSize: '0.8rem', color: 'var(--primary-yellow)', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.2rem', cursor: 'pointer' }}
+                    >
+                      <Plus size={14} /> Add Option
+                    </button>
+                  </div>
+                  
+                  {formData.variants.length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '180px', overflowY: 'auto', paddingRight: '0.4rem' }}>
+                      {formData.variants.map((v, index) => (
+                        <div key={index} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                          <input 
+                            type="text" 
+                            placeholder="Option Name (e.g. Chest / With Cheese)" 
+                            value={v.name} 
+                            onChange={(e) => handleVariantChange(index, 'name', e.target.value)} 
+                            required
+                            style={{ flex: 2, padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--glass-border)', backgroundColor: 'var(--glass)', color: 'var(--text-main)', fontSize: '0.85rem' }}
+                          />
+                          <input 
+                            type="number" 
+                            placeholder="Price (Rs.)" 
+                            value={v.price} 
+                            onChange={(e) => handleVariantChange(index, 'price', Number(e.target.value))} 
+                            required
+                            style={{ flex: 1, padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--glass-border)', backgroundColor: 'var(--glass)', color: 'var(--text-main)', fontSize: '0.85rem' }}
+                          />
+                          <button 
+                            type="button" 
+                            onClick={() => handleRemoveVariant(index)} 
+                            style={{ color: 'var(--accent-red)', cursor: 'pointer', padding: '0.2rem' }}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0, fontStyle: 'italic' }}>No variants added. Item will use the main price above.</p>
+                  )}
                 </div>
               </div>
 
@@ -374,6 +517,25 @@ const styles = {
     transition: 'all 0.3s ease',
     whiteSpace: 'nowrap',
     cursor: 'pointer',
+  },
+  itemsContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2.5rem',
+  },
+  subCatSection: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1rem',
+  },
+  subCatHeading: {
+    fontSize: '1.1rem',
+    fontWeight: '800',
+    color: 'var(--text-muted)',
+    borderBottom: '2px solid var(--glass-border)',
+    paddingBottom: '0.4rem',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
   },
   grid: {
     display: 'grid',
@@ -451,7 +613,7 @@ const styles = {
   itemImage: {
     width: '100%',
     height: '100%',
-    objectFit: 'cover',
+    objectFit: 'contain',
   },
   placeholderContainer: {
     width: '100%',
@@ -529,6 +691,8 @@ const styles = {
     maxWidth: '720px',
     padding: '1.75rem',
     backgroundColor: 'var(--bg-card)',
+    maxHeight: '90vh',
+    overflowY: 'auto',
   },
   modalHeader: {
     display: 'flex',

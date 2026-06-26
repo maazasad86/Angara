@@ -41,6 +41,11 @@ const Deals = () => {
   // Confirm Modal state
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, dealId: null });
 
+  // Variant Selection State in Deal Creator
+  const [showItemVariantModal, setShowItemVariantModal] = useState(false);
+  const [selectedItemForVariant, setSelectedItemForVariant] = useState(null);
+  const [variantQuantities, setVariantQuantities] = useState({});
+
   useEffect(() => {
     fetchData();
     
@@ -92,10 +97,18 @@ const Deals = () => {
   const handleEdit = (deal) => {
     setDealName(deal.name);
     setDealPrice(deal.price);
-    setSelectedItems(deal.items.map(i => ({
-      ...i.item,
-      quantity: i.quantity
-    })));
+    setSelectedItems(deal.items.filter(i => i.item).map(i => {
+      const isVar = !!i.variant;
+      const vObj = isVar && i.item?.variants?.find(v => v.name === i.variant);
+      return {
+        ...i.item,
+        uniqueId: i.variant ? `${i.item._id}-${i.variant}` : i.item._id,
+        name: i.variant ? `${i.item.name} (${i.variant})` : i.item.name,
+        price: vObj ? vObj.price : (i.item?.price || 0),
+        chosenVariant: i.variant || null,
+        quantity: i.quantity
+      };
+    }));
     setDealImage(null);
     setDealImagePreview(deal.image || null);
     setEditingId(deal._id);
@@ -119,23 +132,48 @@ const Deals = () => {
     }
   };
 
-  const addToDeal = (item) => {
-    setSelectedItems(prev => {
-      const existing = prev.find(i => i._id === item._id);
-      if (existing) {
-        return prev.map(i => i._id === item._id ? { ...i, quantity: i.quantity + 1 } : i);
+  const addToDeal = (item, chosenVariant = null, customQuantity = 1) => {
+    if (item.variants && item.variants.length > 0 && !chosenVariant) {
+      setSelectedItemForVariant(item);
+      const initialQuantities = {};
+      item.variants.forEach(v => {
+        initialQuantities[v.name] = 0;
+      });
+      if (item.variants.length > 0) {
+        initialQuantities[item.variants[0].name] = 1;
       }
-      return [...prev, { ...item, quantity: 1 }];
+      setVariantQuantities(initialQuantities);
+      setShowItemVariantModal(true);
+      return;
+    }
+
+    setSelectedItems(prev => {
+      const uniqueId = chosenVariant ? `${item._id}-${chosenVariant.name}` : item._id;
+      const itemName = chosenVariant ? `${item.name} (${chosenVariant.name})` : item.name;
+      const itemPrice = chosenVariant ? chosenVariant.price : item.price;
+
+      const existing = prev.find(i => (i.uniqueId || i._id) === uniqueId);
+      if (existing) {
+        return prev.map(i => (i.uniqueId || i._id) === uniqueId ? { ...i, quantity: i.quantity + customQuantity } : i);
+      }
+      return [...prev, { 
+        ...item, 
+        uniqueId,
+        name: itemName,
+        price: itemPrice,
+        chosenVariant: chosenVariant ? chosenVariant.name : null,
+        quantity: customQuantity 
+      }];
     });
   };
 
-  const removeFromDeal = (id) => {
-    setSelectedItems(prev => prev.filter(i => i._id !== id));
+  const removeFromDeal = (uniqueId) => {
+    setSelectedItems(prev => prev.filter(i => (i.uniqueId || i._id) !== uniqueId));
   };
 
-  const updateItemQty = (id, delta) => {
+  const updateItemQty = (uniqueId, delta) => {
     setSelectedItems(prev => prev.map(i => {
-      if (i._id === id) {
+      if ((i.uniqueId || i._id) === uniqueId) {
         const newQty = i.quantity + delta;
         return newQty > 0 ? { ...i, quantity: newQty } : i;
       }
@@ -154,7 +192,8 @@ const Deals = () => {
     data.append('price', dealPrice);
     data.append('items', JSON.stringify(selectedItems.map(i => ({
       item: i._id,
-      quantity: i.quantity
+      quantity: i.quantity,
+      variant: i.chosenVariant
     }))));
     if (dealImage) {
       data.append('image', dealImage);
@@ -429,27 +468,30 @@ const Deals = () => {
               </div>
               <div style={styles.selectedItemsScroll}>
                 {selectedItems.length > 0 ? (
-                  selectedItems.map(item => (
-                    <div key={item._id} style={styles.selectedItem}>
-                      <div style={styles.selectedItemLeft}>
-                        {item.image && (
-                          <img src={item.image} alt={item.name} style={styles.selectedItemThumb} />
-                        )}
-                        <div style={styles.selInfo}>
-                          <p style={styles.selName}>{item.name}</p>
-                          <p style={styles.selMeta}>
-                            Rs. {item.price} &times; {item.quantity} = <span style={{color:'var(--primary-yellow)', fontWeight:'700'}}>Rs. {item.price * item.quantity}</span>
-                          </p>
+                  selectedItems.map(item => {
+                    const identifier = item.uniqueId || item._id;
+                    return (
+                      <div key={identifier} style={styles.selectedItem}>
+                        <div style={styles.selectedItemLeft}>
+                          {item.image && (
+                            <img src={item.image} alt={item.name} style={styles.selectedItemThumb} />
+                          )}
+                          <div style={styles.selInfo}>
+                            <p style={styles.selName}>{item.name}</p>
+                            <p style={styles.selMeta}>
+                              Rs. {item.price} &times; {item.quantity} = <span style={{color:'var(--primary-yellow)', fontWeight:'700'}}>Rs. {item.price * item.quantity}</span>
+                            </p>
+                          </div>
+                        </div>
+                        <div style={styles.qtyRow}>
+                          <button onClick={() => updateItemQty(identifier, -1)} style={styles.miniQtyBtn}><Minus size={12} /></button>
+                          <span>{item.quantity}</span>
+                          <button onClick={() => updateItemQty(identifier, 1)} style={styles.miniQtyBtn}><Plus size={12} /></button>
+                          <button onClick={() => removeFromDeal(identifier)} style={styles.selRemove}><Trash2 size={16} /></button>
                         </div>
                       </div>
-                      <div style={styles.qtyRow}>
-                        <button onClick={() => updateItemQty(item._id, -1)} style={styles.miniQtyBtn}><Minus size={12} /></button>
-                        <span>{item.quantity}</span>
-                        <button onClick={() => updateItemQty(item._id, 1)} style={styles.miniQtyBtn}><Plus size={12} /></button>
-                        <button onClick={() => removeFromDeal(item._id)} style={styles.selRemove}><Trash2 size={16} /></button>
-                      </div>
-                    </div>
-                  ))
+                    );
+                  })
                 ) : (
                   <div style={styles.emptyPrompt}>
                     <Package size={32} style={{ opacity: 0.1, marginBottom: '0.5rem' }} />
@@ -474,6 +516,110 @@ const Deals = () => {
                 disabled={!dealName || !dealPrice || selectedItems.length === 0}
               >
                 <Save size={20} /> {editingId ? 'Update Deal' : 'Save Deal'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Item Variant Selection Modal in Deal Creator */}
+      {showItemVariantModal && selectedItemForVariant && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="glass-card" style={{ width: '380px', padding: '1.75rem', backgroundColor: 'var(--bg-card)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', color: 'var(--text-main)' }}>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: '800', margin: 0 }}>Select Variant</h3>
+              <button onClick={() => setShowItemVariantModal(false)} style={{ backgroundColor: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={20} /></button>
+            </div>
+            
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
+              Choose quantities for <strong style={{ color: 'var(--text-main)' }}>{selectedItemForVariant.name}</strong> options:
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
+              {selectedItemForVariant.variants.map((v, idx) => {
+                const qty = variantQuantities[v.name] || 0;
+                return (
+                  <div 
+                    key={idx} 
+                    style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'space-between', 
+                      padding: '0.75rem 1rem', 
+                      borderRadius: '10px', 
+                      border: '1px solid', 
+                      borderColor: qty > 0 ? 'var(--primary-yellow)' : 'var(--glass-border)',
+                      backgroundColor: qty > 0 ? 'rgba(250, 204, 21, 0.05)' : 'rgba(255, 255, 255, 0.01)',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span style={{ fontSize: '0.9rem', fontWeight: '600', color: 'var(--text-main)' }}>{v.name}</span>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--primary-yellow)', fontWeight: '700' }}>Rs. {v.price}</span>
+                    </div>
+                    
+                    {/* Quantity Selector */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          setVariantQuantities(prev => ({
+                            ...prev,
+                            [v.name]: Math.max(0, qty - 1)
+                          }));
+                        }}
+                        style={{ width: '28px', height: '28px', borderRadius: '8px', backgroundColor: 'var(--glass)', border: '1px solid var(--glass-border)', color: 'var(--text-main)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                      >
+                        <Minus size={14} />
+                      </button>
+                      <span style={{ fontSize: '0.95rem', fontWeight: '700', color: qty > 0 ? 'var(--text-main)' : 'var(--text-muted)', minWidth: '20px', textAlign: 'center' }}>
+                        {qty}
+                      </span>
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          setVariantQuantities(prev => ({
+                            ...prev,
+                            [v.name]: qty + 1
+                          }));
+                        }}
+                        style={{ width: '28px', height: '28px', borderRadius: '8px', backgroundColor: 'var(--glass)', border: '1px solid var(--glass-border)', color: 'var(--text-main)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                      >
+                        <Plus size={14} />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.8rem' }}>
+              <button 
+                onClick={() => setShowItemVariantModal(false)} 
+                style={{ flex: 1, padding: '0.75rem', backgroundColor: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-main)', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem' }}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => {
+                  let addedAny = false;
+                  selectedItemForVariant.variants.forEach(v => {
+                    const qty = variantQuantities[v.name] || 0;
+                    if (qty > 0) {
+                      addToDeal(selectedItemForVariant, v, qty);
+                      addedAny = true;
+                    }
+                  });
+                  if (addedAny) {
+                    setShowItemVariantModal(false);
+                    setSelectedItemForVariant(null);
+                    setVariantQuantities({});
+                  }
+                }} 
+                style={{ flex: 2, padding: '0.75rem', backgroundColor: 'var(--primary-yellow)', color: '#000', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '800', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                disabled={!Object.values(variantQuantities).some(q => q > 0)}
+              >
+                Add to Deal
               </button>
             </div>
           </div>
@@ -633,11 +779,12 @@ const styles = {
     aspectRatio: '4/3',
     borderRadius: '8px',
     overflow: 'hidden',
+    backgroundColor: 'rgba(0,0,0,0.15)',
   },
   itemImage: {
     width: '100%',
     height: '100%',
-    objectFit: 'cover',
+    objectFit: 'contain',
   },
   priceBadge: {
     position: 'absolute',
@@ -682,24 +829,20 @@ const styles = {
     gap: '0.8rem',
     background: 'var(--bg-card)',
     height: 'calc(100vh - 200px)',
-    overflow: 'hidden',
+    overflowY: 'auto',
     boxSizing: 'border-box',
+    paddingRight: '0.5rem',
   },
   selectedItemsSection: {
     display: 'flex',
     flexDirection: 'column',
     gap: '0.5rem',
-    flex: 1,
-    overflow: 'hidden',
   },
   selectedItemsScroll: {
     display: 'flex',
     flexDirection: 'column',
     gap: '0.4rem',
     boxSizing: 'border-box',
-    flex: 1,
-    overflowY: 'auto',
-    paddingRight: '0.4rem',
   },
   saveBtnContainer: {
     display: 'flex',
