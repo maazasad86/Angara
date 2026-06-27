@@ -3,11 +3,33 @@ const router = express.Router();
 const Item = require('../models/Item');
 const { upload, uploadToCloudinary } = require('../middleware/cloudinary');
 
-// Get all items (populated with category)
+// Get all items (with pagination and search)
 router.get('/', async (req, res) => {
     try {
-        const items = await Item.find().populate('category').sort({ createdAt: -1 });
-        res.json(items);
+        const { page = 1, limit, search } = req.query;
+        let query = {};
+        
+        if (search) {
+            query.name = { $regex: search, $options: 'i' };
+        }
+
+        const itemsQuery = Item.find(query).populate('category').sort({ createdAt: -1 });
+        
+        let items;
+        let total = 0;
+        
+        if (limit) {
+            const pageNumber = parseInt(page);
+            const limitNumber = parseInt(limit);
+            items = await itemsQuery.skip((pageNumber - 1) * limitNumber).limit(limitNumber);
+            total = await Item.countDocuments(query);
+            res.json({ items, total, page: pageNumber, limit: limitNumber, totalPages: Math.ceil(total / limitNumber) });
+        } else {
+            items = await itemsQuery;
+            // Returning in object format to match paginated structure if needed, or array for backward compatibility
+            // Front-end should handle both, but let's stick to returning array if no limit to match existing behavior
+            res.json(items);
+        }
     } catch (err) {
         console.error('FETCH ITEMS ERROR:', err);
         res.status(500).json({ message: err.message });
@@ -119,6 +141,55 @@ router.delete('/:id', async (req, res) => {
         res.json({ message: 'Item deleted' });
     } catch (err) {
         console.error('DELETE ITEM ROUTE ERROR:', err);
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// Toggle availability
+router.put('/:id/toggle-availability', async (req, res) => {
+    try {
+        const item = await Item.findById(req.params.id);
+        if (!item) return res.status(404).json({ message: 'Item not found' });
+        
+        item.isAvailable = !item.isAvailable;
+        await item.save();
+        
+        const updatedItem = await Item.findById(req.params.id).populate('category');
+        res.json(updatedItem);
+    } catch (err) {
+        console.error('TOGGLE AVAILABILITY ERROR:', err);
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// Bulk update prices
+router.put('/bulk/update-prices', async (req, res) => {
+    try {
+        const { updates } = req.body; // updates is an array of { id, price, variants }
+        if (!updates || !Array.isArray(updates)) {
+            return res.status(400).json({ message: 'Updates array is required' });
+        }
+
+        const bulkOps = updates.map(update => {
+            const updateDoc = {};
+            if (update.price !== undefined) updateDoc.price = Number(update.price);
+            if (update.variants !== undefined) updateDoc.variants = update.variants;
+            
+            return {
+                updateOne: {
+                    filter: { _id: update.id },
+                    update: { $set: updateDoc }
+                }
+            };
+        });
+
+        if (bulkOps.length > 0) {
+            await Item.bulkWrite(bulkOps);
+        }
+
+        res.json({ message: 'Prices updated successfully' });
+    } catch (err) {
+        console.error('BULK UPDATE ERROR:', err);
         res.status(500).json({ message: err.message });
     }
 });

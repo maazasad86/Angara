@@ -82,7 +82,7 @@ const Categories = () => {
 
   const fetchCategories = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/categories');
+      const res = await axios.get(`http://${window.location.hostname}:5000/api/categories`);
       setCategories(res.data);
       setLoading(false);
     } catch (err) {
@@ -100,13 +100,13 @@ const Categories = () => {
         // Merge existing subcategories with new ones, avoiding duplicates
         const mergedSubCategories = Array.from(new Set([...(existing.subCategories || []), ...subCategories]));
 
-        await axios.put(`http://localhost:5000/api/categories/${existing._id}`, {
+        await axios.put(`http://${window.location.hostname}:5000/api/categories/${existing._id}`, {
           name: existing.name,
           subCategories: mergedSubCategories
         });
       } else {
         // Create new category
-        await axios.post('http://localhost:5000/api/categories', { name, subCategories });
+        await axios.post(`http://${window.location.hostname}:5000/api/categories`, { name, subCategories });
       }
 
       setShowModal(false);
@@ -123,7 +123,7 @@ const Categories = () => {
   const handleDelete = async () => {
     if (!deleteId) return;
     try {
-      await axios.delete(`http://localhost:5000/api/categories/${deleteId}`);
+      await axios.delete(`http://${window.location.hostname}:5000/api/categories/${deleteId}`);
       setDeleteId(null);
       fetchCategories();
     } catch (err) {
@@ -140,7 +140,7 @@ const Categories = () => {
   const handleUpdate = async (id) => {
     try {
       const subCategories = editSubCategories.split(',').map(s => s.trim()).filter(s => s);
-      await axios.put(`http://localhost:5000/api/categories/${id}`, {
+      await axios.put(`http://${window.location.hostname}:5000/api/categories/${id}`, {
         name: editName,
         subCategories
       });

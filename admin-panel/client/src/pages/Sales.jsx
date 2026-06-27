@@ -89,8 +89,8 @@ const Sales = () => {
     setLoading(true);
     try {
       const [salesRes, catsRes] = await Promise.all([
-        axios.get('http://localhost:5000/api/sales'),
-        axios.get('http://localhost:5000/api/categories')
+        axios.get(`http://${window.location.hostname}:5000/api/sales`),
+        axios.get(`http://${window.location.hostname}:5000/api/categories`)
       ]);
       setSales(salesRes.data);
       setCategories(catsRes.data);

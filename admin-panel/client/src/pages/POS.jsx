@@ -50,6 +50,17 @@ const POS = () => {
   const [selectedDealForVariants, setSelectedDealForVariants] = useState(null);
   const [selectedDealVariants, setSelectedDealVariants] = useState({});
 
+  // Custom Alert Modal State
+  const [alertConfig, setAlertConfig] = useState({ show: false, message: '', title: 'Notification', type: 'info', onConfirm: null });
+
+  const showAlert = (message, title = 'Notification', type = 'info') => {
+    setAlertConfig({ show: true, message, title, type, onConfirm: null });
+  };
+
+  const showConfirm = (message, title, onConfirm) => {
+    setAlertConfig({ show: true, message, title, type: 'confirm', onConfirm });
+  };
+
   useEffect(() => {
     fetchData();
     const storedHolds = localStorage.getItem('angaara_held_orders');
@@ -63,9 +74,9 @@ const POS = () => {
   const fetchData = async () => {
     try {
       const [itemsRes, catsRes, dealsRes] = await Promise.all([
-        axios.get('http://localhost:5000/api/items'),
-        axios.get('http://localhost:5000/api/categories'),
-        axios.get('http://localhost:5000/api/deals')
+        axios.get(`http://${window.location.hostname}:5000/api/items`),
+        axios.get(`http://${window.location.hostname}:5000/api/categories`),
+        axios.get(`http://${window.location.hostname}:5000/api/deals`)
       ]);
       setItems(itemsRes.data);
       setCategories(catsRes.data);
@@ -163,7 +174,8 @@ const POS = () => {
         price: itemPrice,
         items: clonedItems,
         chosenVariant: chosenVariant ? chosenVariant.name : null,
-        quantity: customQuantity
+        quantity: customQuantity,
+        isPrinted: false
       }];
     });
   };
@@ -230,11 +242,45 @@ const POS = () => {
     return sortedGroups;
   }, [displayItems, activeCategory, categories]);
 
-  const handlePrintKOT = () => {
-    setPrintType('KOT');
-    setTimeout(() => {
-      window.print();
-    }, 100);
+  const handleSendToKitchen = async () => {
+    const unprintedItems = cart.filter(item => !item.isPrinted);
+    if (unprintedItems.length === 0) {
+      showAlert('No new items to send to kitchen.', 'Notice');
+      return;
+    }
+    
+    // Check if this is an add-on KOT
+    const isAddon = cart.some(item => item.isPrinted);
+
+    const desiItems = unprintedItems.filter(i => i.category?.name?.toLowerCase().includes('desi') || i.category?.name?.toLowerCase().includes('bbq'));
+    const fastFoodItems = unprintedItems.filter(i => !i.category?.name?.toLowerCase().includes('desi') && !i.category?.name?.toLowerCase().includes('bbq') && !i.category?.name?.toLowerCase().includes('drink'));
+
+    try {
+      if (desiItems.length > 0) {
+        await axios.post(`http://${window.location.hostname}:5000/api/print`, {
+          type: 'KOT_DESI',
+          items: desiItems,
+          orderType,
+          isAddon
+        });
+      }
+      
+      if (fastFoodItems.length > 0) {
+        await axios.post(`http://${window.location.hostname}:5000/api/print`, {
+          type: 'KOT_FASTFOOD',
+          items: fastFoodItems,
+          orderType,
+          isAddon
+        });
+      }
+      
+      // Mark as printed
+      setCart(prev => prev.map(i => ({...i, isPrinted: true})));
+      showAlert('KOT sent to kitchen printers successfully!', 'Success', 'success');
+    } catch (err) {
+      console.error(err);
+      showAlert('Error printing KOT to kitchen. Check printer connection.', 'Error', 'error');
+    }
   };
 
   const handleHoldOrderClick = () => {
@@ -267,18 +313,23 @@ const POS = () => {
   };
 
   const handleResumeOrder = (heldOrder) => {
-    if (cart.length > 0) {
-      if (!window.confirm("Current cart is not empty. Replace it?")) return;
-    }
-    setCart(heldOrder.cart);
-    setOrderType(heldOrder.orderType);
-    setCustomerName(heldOrder.customerName || '');
-    setCustomerPhone(heldOrder.customerPhone || '');
+    const doResume = () => {
+      setCart(heldOrder.cart);
+      setOrderType(heldOrder.orderType);
+      setCustomerName(heldOrder.customerName || '');
+      setCustomerPhone(heldOrder.customerPhone || '');
 
-    const updatedHolds = heldOrders.filter(h => h.id !== heldOrder.id);
-    setHeldOrders(updatedHolds);
-    localStorage.setItem('angaara_held_orders', JSON.stringify(updatedHolds));
-    setShowHeldModal(false);
+      const updatedHolds = heldOrders.filter(h => h.id !== heldOrder.id);
+      setHeldOrders(updatedHolds);
+      localStorage.setItem('angaara_held_orders', JSON.stringify(updatedHolds));
+      setShowHeldModal(false);
+    };
+
+    if (cart.length > 0) {
+      showConfirm("Current cart is not empty. Replace it?", "Warning", doResume);
+    } else {
+      doResume();
+    }
   };
 
   const handleDeleteHoldClick = (id) => {
@@ -297,18 +348,18 @@ const POS = () => {
 
   const handleOpenShiftModal = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/reports/current-shift');
+      const res = await axios.get(`http://${window.location.hostname}:5000/api/reports/current-shift`);
       setShiftData(res.data);
       setDrawerCashInput(''); // Explicitly empty
       setShowShiftModal(true);
     } catch (err) {
-      alert("Failed to load shift data: " + err.message);
+      showAlert("Failed to load shift data: " + err.message, 'Error', 'error');
     }
   };
 
   const submitShiftClose = async () => {
     try {
-      const res = await axios.post('http://localhost:5000/api/reports/close-shift', {
+      const res = await axios.post(`http://${window.location.hostname}:5000/api/reports/close-shift`, {
         drawerCash: drawerCashInput,
         notes: 'Closed via POS'
       });
@@ -325,15 +376,14 @@ const POS = () => {
       setShowShiftModal(false);
       setShiftData(null);
       setDrawerCashInput('');
-      alert("Shift Closed Successfully!");
+      showAlert("Shift Closed Successfully!", 'Success', 'success');
 
     } catch (err) {
-      alert("Failed to close shift: " + err.message);
+      showAlert("Failed to close shift: " + err.message, 'Error', 'error');
     }
   };
 
   const handleCheckoutAndPrint = async () => {
-    setPrintType('RECEIPT');
     try {
       const saleItems = cart.map(item => ({
         itemId: item.originalId || item._id,
@@ -344,7 +394,8 @@ const POS = () => {
         quantity: item.quantity
       }));
 
-      await axios.post('http://localhost:5000/api/sales', {
+      // Save to database
+      const res = await axios.post(`http://${window.location.hostname}:5000/api/sales`, {
         items: saleItems,
         totalAmount: total,
         orderType,
@@ -352,18 +403,26 @@ const POS = () => {
         customerPhone: orderType === 'Delivery' ? customerPhone : ''
       });
 
-      setTimeout(() => {
-        window.print();
-        setCart([]);
-        setOrderType('Dine-in');
-        setCustomerName('');
-        setCustomerPhone('');
-        setShowCheckoutModal(false);
-        setCashReceived('');
-      }, 100);
+      // Send to printer silently
+      await axios.post(`http://${window.location.hostname}:5000/api/print`, {
+          type: 'CUSTOMER_RECEIPT',
+          items: cart,
+          orderType,
+          customerName,
+          totalAmount: total,
+          orderId: res.data._id
+      });
+
+      setCart([]);
+      setOrderType('Dine-in');
+      setCustomerName('');
+      setCustomerPhone('');
+      setShowCheckoutModal(false);
+      setCashReceived('');
+      showAlert('Sale saved and receipt printed silently!', 'Success', 'success');
     } catch (err) {
-      console.error('Error recording sale:', err);
-      alert('Failed to save sale to records: ' + (err.response?.data?.message || err.message));
+      console.error('Error recording sale or printing:', err);
+      showAlert('Error during checkout or printing. Check connection.', 'Error', 'error');
     }
   };
 
@@ -677,7 +736,7 @@ const POS = () => {
 
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               <button
-                onClick={handlePrintKOT}
+                onClick={handleSendToKitchen}
                 style={{ ...styles.printBtn, flex: 1, backgroundColor: '#ef4444', color: '#fff', border: 'none' }}
                 disabled={cart.length === 0}
               >
@@ -1124,6 +1183,26 @@ const POS = () => {
           </div>
         </div>
       )}
+      {/* Custom Alert/Confirm Modal */}
+      {alertConfig.show && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'fadeIn 0.2s ease-out' }}>
+          <div className="glass-card" style={{ width: '350px', padding: '1.5rem', textAlign: 'center', animation: 'scaleIn 0.2s ease-out', border: `1px solid ${alertConfig.type === 'error' ? '#ef4444' : alertConfig.type === 'success' ? '#4ade80' : 'var(--primary-yellow)'}` }}>
+            <h3 style={{ margin: '0 0 1rem 0', color: 'var(--text-main)' }}>{alertConfig.title}</h3>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.95rem' }}>{alertConfig.message}</p>
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+              {alertConfig.type === 'confirm' ? (
+                <>
+                  <button onClick={() => setAlertConfig(prev => ({...prev, show: false}))} style={{ flex: 1, padding: '0.6rem', backgroundColor: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-main)', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>Cancel</button>
+                  <button onClick={() => { alertConfig.onConfirm(); setAlertConfig(prev => ({...prev, show: false})); }} style={{ flex: 1, padding: '0.6rem', backgroundColor: 'var(--primary-yellow)', color: '#000', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>Confirm</button>
+                </>
+              ) : (
+                <button onClick={() => setAlertConfig(prev => ({...prev, show: false}))} style={{ flex: 1, padding: '0.6rem', backgroundColor: 'var(--primary-yellow)', color: '#000', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>OK</button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
     </Layout>
   );
 };

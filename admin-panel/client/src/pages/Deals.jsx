@@ -63,9 +63,9 @@ const Deals = () => {
   const fetchData = async () => {
     try {
       const [dealsRes, itemsRes, catsRes] = await Promise.all([
-        axios.get('http://localhost:5000/api/deals'),
-        axios.get('http://localhost:5000/api/items'),
-        axios.get('http://localhost:5000/api/categories')
+        axios.get(`http://${window.location.hostname}:5000/api/deals`),
+        axios.get(`http://${window.location.hostname}:5000/api/items`),
+        axios.get(`http://${window.location.hostname}:5000/api/categories`)
       ]);
       setDeals(dealsRes.data);
       setItems(itemsRes.data);
@@ -125,7 +125,7 @@ const Deals = () => {
     const id = confirmModal.dealId;
     if (!id) return;
     try {
-      await axios.delete(`http://localhost:5000/api/deals/${id}`);
+      await axios.delete(`http://${window.location.hostname}:5000/api/deals/${id}`);
       setDeals(deals.filter(d => d._id !== id));
       setConfirmModal({ isOpen: false, dealId: null });
     } catch (err) {
@@ -199,10 +199,10 @@ const Deals = () => {
 
     try {
       if (editingId) {
-        const res = await axios.put(`http://localhost:5000/api/deals/${editingId}`, data);
+        const res = await axios.put(`http://${window.location.hostname}:5000/api/deals/${editingId}`, data);
         setDeals(deals.map(d => d._id === editingId ? res.data : d));
       } else {
-        const res = await axios.post('http://localhost:5000/api/deals', data);
+        const res = await axios.post(`http://${window.location.hostname}:5000/api/deals`, data);
         setDeals([...deals, res.data]);
       }
       setIsCreating(false);

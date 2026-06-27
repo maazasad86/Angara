@@ -42,6 +42,10 @@ const ItemSchema = new mongoose.Schema({
             price: { type: Number, required: true }
         }
     ],
+    isAvailable: {
+        type: Boolean,
+        default: true
+    },
     createdAt: {
         type: Date,
         default: Date.now

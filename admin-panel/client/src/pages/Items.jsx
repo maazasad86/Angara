@@ -3,16 +3,22 @@ import axios from 'axios';
 import Layout from '../components/Layout';
 import ConfirmModal from '../components/ConfirmModal';
 import { Spinner } from '../components/ui/spinner-1';
-import { Plus, Edit2, Trash2, X, Upload, Package, MoreVertical, PlusCircle } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, Upload, Package, MoreVertical, PlusCircle, Search, Save, Power } from 'lucide-react';
+import imageCompression from 'browser-image-compression';
 
 const Items = () => {
   const [items, setItems] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Pagination & Search
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const LIMIT = 20;
+
   // Form State
   const [showModal, setShowModal] = useState(false);
-  const [activeTab, setActiveTab] = useState('basic'); // 'basic' | 'pricing' | 'extras'
   const [showDropdown, setShowDropdown] = useState(null);
   const [isEditing, setIsEditing] = useState(null);
   const [formData, setFormData] = useState({
@@ -24,9 +30,15 @@ const Items = () => {
     variants: [],
     spiceLevel: false,
     addons: [],
-    image: null
+    image: null,
+    isAvailable: true
   });
   const [imagePreview, setImagePreview] = useState(null);
+  const [isCompressing, setIsCompressing] = useState(false);
+
+  // Bulk Edit State
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [bulkItems, setBulkItems] = useState([]);
 
   // Confirm Modal State
   const [confirmModal, setConfirmModal] = useState({
@@ -34,17 +46,29 @@ const Items = () => {
     itemId: null,
   });
 
+  const [activeCategory, setActiveCategory] = useState('All');
+  const [activeSubCategory, setActiveSubCategory] = useState('All');
+
   useEffect(() => {
-    fetchData();
+    fetchData(1, '');
   }, []);
 
-  const fetchData = async () => {
+  const fetchData = async (page = 1, search = '') => {
+    setLoading(true);
     try {
       const [itemsRes, catsRes] = await Promise.all([
-        axios.get('http://localhost:5000/api/items'),
-        axios.get('http://localhost:5000/api/categories')
+        axios.get(`http://${window.location.hostname}:5000/api/items?page=${page}&limit=${LIMIT}&search=${search}`),
+        axios.get(`http://${window.location.hostname}:5000/api/categories`)
       ]);
-      setItems(itemsRes.data);
+      
+      if (itemsRes.data.items) {
+        setItems(itemsRes.data.items);
+        setTotalPages(itemsRes.data.totalPages);
+        setCurrentPage(itemsRes.data.page);
+      } else {
+        setItems(itemsRes.data); // fallback if limit wasn't applied
+      }
+      
       setCategories(catsRes.data);
       setLoading(false);
     } catch (err) {
@@ -53,16 +77,38 @@ const Items = () => {
     }
   };
 
+  const handleSearch = (e) => {
+    e.preventDefault();
+    fetchData(1, searchQuery);
+  };
+
+  const formatPrice = (price) => {
+    return Number(price).toLocaleString('en-PK');
+  };
+
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData({ ...formData, [name]: type === 'checkbox' ? checked : value });
   };
 
-  const handleImageChange = (e) => {
+  const handleImageChange = async (e) => {
     const file = e.target.files[0];
     if (file) {
-      setFormData({ ...formData, image: file });
-      setImagePreview(URL.createObjectURL(file));
+      setIsCompressing(true);
+      try {
+        const options = {
+          maxSizeMB: 0.5, // 500KB
+          maxWidthOrHeight: 1024,
+          useWebWorker: true
+        };
+        const compressedFile = await imageCompression(file, options);
+        setFormData({ ...formData, image: compressedFile });
+        setImagePreview(URL.createObjectURL(compressedFile));
+      } catch (error) {
+        console.error('Error compressing image:', error);
+        alert('Error compressing image. Please try another.');
+      }
+      setIsCompressing(false);
     }
   };
 
@@ -98,6 +144,8 @@ const Items = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if(isCompressing) return alert('Wait for image compression to finish!');
+    
     const data = new FormData();
     data.append('name', formData.name);
     data.append('category', formData.category);
@@ -107,6 +155,7 @@ const Items = () => {
     data.append('spiceLevel', formData.spiceLevel);
     data.append('variants', JSON.stringify(formData.variants));
     data.append('addons', JSON.stringify(formData.addons));
+    data.append('isAvailable', formData.isAvailable);
 
     if (formData.image) {
       data.append('image', formData.image);
@@ -114,12 +163,12 @@ const Items = () => {
 
     try {
       if (isEditing) {
-        await axios.put(`http://localhost:5000/api/items/${isEditing}`, data);
+        await axios.put(`http://${window.location.hostname}:5000/api/items/${isEditing}`, data);
       } else {
-        await axios.post('http://localhost:5000/api/items', data);
+        await axios.post(`http://${window.location.hostname}:5000/api/items`, data);
       }
       resetForm();
-      fetchData();
+      fetchData(currentPage, searchQuery);
     } catch (err) {
       alert(err.response?.data?.message || 'Error saving item');
     }
@@ -128,12 +177,11 @@ const Items = () => {
   const resetForm = () => {
     setFormData({ 
       name: '', category: '', subCategory: '', priceType: 'single', 
-      price: '', variants: [], spiceLevel: false, addons: [], image: null 
+      price: '', variants: [], spiceLevel: false, addons: [], image: null, isAvailable: true 
     });
     setImagePreview(null);
     setShowModal(false);
     setIsEditing(null);
-    setActiveTab('basic');
   };
 
   const handleEdit = (item) => {
@@ -147,10 +195,10 @@ const Items = () => {
       variants: item.variants || [],
       spiceLevel: item.spiceLevel || false,
       addons: item.addons || [],
-      image: null
+      image: null,
+      isAvailable: item.isAvailable !== undefined ? item.isAvailable : true
     });
     setImagePreview(item.image);
-    setActiveTab('basic');
     setShowModal(true);
   };
 
@@ -166,15 +214,60 @@ const Items = () => {
     if (!id) return;
     
     try {
-      await axios.delete(`http://localhost:5000/api/items/${id}`);
-      fetchData();
+      await axios.delete(`http://${window.location.hostname}:5000/api/items/${id}`);
+      fetchData(currentPage, searchQuery);
     } catch (err) {
       alert(err.response?.data?.message || 'Error deleting item');
     }
   };
 
-  const [activeCategory, setActiveCategory] = useState('All');
-  const [activeSubCategory, setActiveSubCategory] = useState('All');
+  const toggleAvailability = async (id, currentStatus) => {
+    try {
+      // Optimistic update
+      setItems(items.map(item => item._id === id ? { ...item, isAvailable: !currentStatus } : item));
+      await axios.put(`http://${window.location.hostname}:5000/api/items/${id}/toggle-availability`);
+    } catch (err) {
+      alert('Failed to toggle status');
+      fetchData(currentPage, searchQuery); // Revert on failure
+    }
+  };
+
+  const openBulkModal = () => {
+    // Clone items for bulk edit to avoid mutating main state directly
+    setBulkItems(JSON.parse(JSON.stringify(items)));
+    setShowBulkModal(true);
+  };
+
+  const handleBulkChange = (id, field, value, variantIndex = null) => {
+    const updated = bulkItems.map(item => {
+      if(item._id === id) {
+        if(variantIndex !== null) {
+          const newVariants = [...item.variants];
+          newVariants[variantIndex][field] = value;
+          return { ...item, variants: newVariants };
+        }
+        return { ...item, [field]: value };
+      }
+      return item;
+    });
+    setBulkItems(updated);
+  };
+
+  const handleBulkSubmit = async () => {
+    try {
+      const updates = bulkItems.map(item => ({
+        id: item._id,
+        price: item.price,
+        variants: item.variants
+      }));
+      await axios.put(`http://${window.location.hostname}:5000/api/items/bulk/update-prices`, { updates });
+      setShowBulkModal(false);
+      fetchData(currentPage, searchQuery);
+    } catch(err) {
+      alert('Error updating prices');
+    }
+  };
+
 
   // Filter items based on activeCategory and activeSubCategory
   const filteredItems = items.filter(item => {
@@ -194,13 +287,10 @@ const Items = () => {
       groups[sub].push(item);
     });
 
-    // Sort keys based on activeCategory's subCategories array
     const currentCategoryObj = categories.find(cat => cat.name === activeCategory);
     const orderedSubCats = currentCategoryObj?.subCategories || [];
-
     const sortedGroups = {};
 
-    // First, add groups in the order specified by the category
     orderedSubCats.forEach(sub => {
       const matchingKey = Object.keys(groups).find(k => k.toLowerCase() === sub.toLowerCase());
       if (matchingKey) {
@@ -209,7 +299,6 @@ const Items = () => {
       }
     });
 
-    // Then, add any remaining groups (e.g. Uncategorized or dynamically added ones)
     Object.keys(groups).forEach(key => {
       sortedGroups[key] = groups[key];
     });
@@ -222,11 +311,28 @@ const Items = () => {
       <div style={styles.headerRow}>
         <div>
           <h2 style={styles.sectionTitle}>Manage Items</h2>
-          <p style={styles.sectionSubtitle}>Add and organize your products.</p>
+          <p style={styles.sectionSubtitle}>Add, organize, and quickly update your menu.</p>
         </div>
-        <button onClick={() => setShowModal(true)} className="btn-primary">
-          <Plus size={20} /> Add New Item
-        </button>
+        
+        <div style={{display: 'flex', gap: '1rem', alignItems: 'center'}}>
+          <form onSubmit={handleSearch} style={styles.searchBar}>
+            <Search size={18} color="var(--text-muted)" />
+            <input 
+              type="text" 
+              placeholder="Search Items..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={styles.searchInput}
+            />
+          </form>
+          
+          <button onClick={openBulkModal} className="btn-secondary" style={{display: 'flex', alignItems: 'center', gap: '0.4rem'}}>
+            <Edit2 size={16} /> Bulk Price Edit
+          </button>
+          <button onClick={() => setShowModal(true)} className="btn-primary" style={{display: 'flex', alignItems: 'center', gap: '0.4rem'}}>
+            <Plus size={18} /> Add New Item
+          </button>
+        </div>
       </div>
 
       <div style={styles.tabsContainer}>
@@ -306,98 +412,180 @@ const Items = () => {
                   <h4 style={styles.subCatHeading}>{subCat}</h4>
                 )}
                 <div style={styles.grid}>
-                  {groupItems.map((item) => (
-                    <div key={item._id} className="glass-card hover-scale" style={styles.itemCard}>
-                      <div style={styles.menuDotContainer}>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setShowDropdown(showDropdown === item._id ? null : item._id);
-                          }}
-                          style={styles.menuDotBtn}
-                        >
-                          <MoreVertical size={16} />
-                        </button>
-                        {showDropdown === item._id && (
-                          <div style={styles.dropdownMenu}>
-                            <button onClick={() => { handleEdit(item); setShowDropdown(null); }} style={styles.dropdownItem}>
-                              <Edit2 size={14} style={{ marginRight: '0.4rem' }} /> Edit
-                            </button>
-                            <button onClick={() => { confirmDelete(item._id); setShowDropdown(null); }} style={{ ...styles.dropdownItem, color: 'var(--accent-red)' }}>
-                              <Trash2 size={14} style={{ marginRight: '0.4rem' }} /> Delete
-                            </button>
-                          </div>
-                        )}
-                      </div>
-
-                      <div style={styles.imageContainer}>
-                        {item.image ? (
-                          <img src={item.image} alt={item.name} style={styles.itemImage} />
-                        ) : (
-                          <div style={styles.placeholderContainer}>
-                            <Package size={32} color="var(--text-muted)" opacity={0.5} />
-                          </div>
-                        )}
-                      </div>
-
-                      <div style={styles.itemHeaderContainer}>
-                        <div style={styles.itemName}>{item.name}</div>
-                      </div>
-
-                      <div style={styles.itemPriceContainer}>
-                        {item.variants && item.variants.length > 0 ? (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', width: '100%' }}>
-                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 'bold' }}>Variants:</div>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                              {item.variants.map((v, idx) => (
-                                <span key={idx} style={{
-                                  fontSize: '0.65rem',
-                                  padding: '2px 6px',
-                                  borderRadius: '4px',
-                                  backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                                  color: 'var(--text-main)',
-                                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                                  whiteSpace: 'nowrap'
-                                }}>
-                                  {v.name}: Rs. {v.price}
-                                </span>
-                              ))}
+                  {groupItems.map((item) => {
+                    const isAvail = item.isAvailable !== false;
+                    return (
+                      <div key={item._id} className="glass-card hover-scale" style={{...styles.itemCard, opacity: isAvail ? 1 : 0.6}}>
+                        <div style={styles.menuDotContainer}>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowDropdown(showDropdown === item._id ? null : item._id);
+                            }}
+                            style={styles.menuDotBtn}
+                          >
+                            <MoreVertical size={16} />
+                          </button>
+                          {showDropdown === item._id && (
+                            <div style={styles.dropdownMenu}>
+                              <button onClick={() => { handleEdit(item); setShowDropdown(null); }} style={styles.dropdownItem}>
+                                <Edit2 size={14} style={{ marginRight: '0.4rem' }} /> Edit
+                              </button>
+                              <button onClick={() => { toggleAvailability(item._id, isAvail); setShowDropdown(null); }} style={styles.dropdownItem}>
+                                <Power size={14} style={{ marginRight: '0.4rem' }} /> {isAvail ? 'Mark Out of Stock' : 'Mark Available'}
+                              </button>
+                              <button onClick={() => { confirmDelete(item._id); setShowDropdown(null); }} style={{ ...styles.dropdownItem, color: 'var(--accent-red)' }}>
+                                <Trash2 size={14} style={{ marginRight: '0.4rem' }} /> Delete
+                              </button>
                             </div>
-                          </div>
-                        ) : (
-                          <div style={styles.itemPrice}>Rs. {item.price}</div>
+                          )}
+                        </div>
+                        
+                        {!isAvail && (
+                          <div style={styles.outOfStockOverlay}>OUT OF STOCK</div>
                         )}
+
+                        <div style={styles.imageContainer}>
+                          {item.image ? (
+                            <img src={item.image} alt={item.name} style={styles.itemImage} />
+                          ) : (
+                            <div style={styles.placeholderContainer}>
+                              <Package size={32} color="var(--text-muted)" opacity={0.5} />
+                            </div>
+                          )}
+                        </div>
+
+                        <div style={styles.itemHeaderContainer}>
+                          <div style={styles.itemName}>{item.name}</div>
+                          <div style={{fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px', display: 'flex', gap: '8px', flexWrap: 'wrap'}}>
+                            {item.spiceLevel && <span style={styles.chip}>Spicy</span>}
+                            {item.addons?.length > 0 && <span style={styles.chip}>{item.addons.length} Extras</span>}
+                          </div>
+                        </div>
+
+                        <div style={styles.itemPriceContainer}>
+                          {item.variants && item.variants.length > 0 ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', width: '100%' }}>
+                              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 'bold' }}>Portions:</div>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                {item.variants.map((v, idx) => (
+                                  <span key={idx} style={{
+                                    fontSize: '0.65rem',
+                                    padding: '2px 6px',
+                                    borderRadius: '4px',
+                                    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                                    color: 'var(--text-main)',
+                                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                                    whiteSpace: 'nowrap'
+                                  }}>
+                                    {v.name}: Rs. {formatPrice(v.price)}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          ) : (
+                            <div style={styles.itemPrice}>
+                              {item.priceType === 'variants' && item.variants?.length > 0 
+                                ? `From Rs. ${formatPrice(Math.min(...item.variants.map(v => Number(v.price))))}`
+                                : `Rs. ${formatPrice(item.price)}`
+                              }
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
-
-              <div style={styles.itemHeaderContainer}>
-                <div style={styles.itemName}>{item.name}</div>
-                <div style={{fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px', display: 'flex', gap: '8px', flexWrap: 'wrap'}}>
-                  {item.spiceLevel && <span style={styles.chip}>Spicy</span>}
-                  {item.addons?.length > 0 && <span style={styles.chip}>{item.addons.length} Add-ons</span>}
-                </div>
-              </div>
-
-              <div style={styles.itemPriceContainer}>
-                <div style={styles.itemPrice}>
-                  {item.priceType === 'variants' && item.variants?.length > 0 
-                    ? `From Rs. ${Math.min(...item.variants.map(v => v.price))}`
-                    : `Rs. ${item.price}`
-                  }
-                </div>
-              </div>
-            </div>
-          ))
+            );
+          })
         ) : (
           <div style={styles.noItems}>
             <Package size={48} />
-            <p>No items found in this category.</p>
+            <p>No items found.</p>
           </div>
         )}
       </div>
+
+      {totalPages > 1 && (
+        <div style={styles.paginationContainer}>
+          <button 
+            disabled={currentPage === 1} 
+            onClick={() => fetchData(currentPage - 1, searchQuery)}
+            className="btn-secondary"
+          >
+            Previous
+          </button>
+          <span style={{color: 'var(--text-main)', fontSize: '0.9rem'}}>Page {currentPage} of {totalPages}</span>
+          <button 
+            disabled={currentPage === totalPages} 
+            onClick={() => fetchData(currentPage + 1, searchQuery)}
+            className="btn-secondary"
+          >
+            Next
+          </button>
+        </div>
+      )}
+
+      {showBulkModal && (
+        <div style={styles.modalOverlay}>
+          <div className="glass-card" style={{...styles.modal, maxWidth: '900px'}}>
+            <div style={styles.modalHeader}>
+              <h3>Quick Price Update (Bulk Edit)</h3>
+              <button onClick={() => setShowBulkModal(false)} style={styles.closeBtn}><X /></button>
+            </div>
+            <div style={{maxHeight: '60vh', overflowY: 'auto', marginBottom: '1.5rem'}}>
+              <table style={{width: '100%', borderCollapse: 'collapse', color: 'var(--text-main)'}}>
+                <thead>
+                  <tr style={{borderBottom: '1px solid var(--glass-border)'}}>
+                    <th style={{textAlign: 'left', padding: '10px'}}>Item Name</th>
+                    <th style={{textAlign: 'left', padding: '10px'}}>Category</th>
+                    <th style={{textAlign: 'left', padding: '10px'}}>Price / Variants (Rs.)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bulkItems.map(item => (
+                    <tr key={item._id} style={{borderBottom: '1px solid rgba(255,255,255,0.05)'}}>
+                      <td style={{padding: '10px', fontSize: '0.9rem'}}>{item.name}</td>
+                      <td style={{padding: '10px', fontSize: '0.8rem', color: 'var(--text-muted)'}}>{item.category?.name || '-'}</td>
+                      <td style={{padding: '10px'}}>
+                        {item.priceType === 'single' ? (
+                          <input 
+                            type="number" 
+                            value={item.price} 
+                            onChange={(e) => handleBulkChange(item._id, 'price', e.target.value)}
+                            style={{...styles.bulkInput, width: '120px'}}
+                          />
+                        ) : (
+                          <div style={{display: 'flex', flexDirection: 'column', gap: '5px'}}>
+                            {item.variants.map((v, i) => (
+                              <div key={i} style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                                <span style={{fontSize: '0.8rem', width: '60px'}}>{v.name}</span>
+                                <input 
+                                  type="number"
+                                  value={v.price}
+                                  onChange={(e) => handleBulkChange(item._id, 'price', e.target.value, i)}
+                                  style={{...styles.bulkInput, width: '100px'}}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div style={{display: 'flex', justifyContent: 'flex-end', gap: '1rem'}}>
+              <button onClick={() => setShowBulkModal(false)} className="btn-secondary">Cancel</button>
+              <button onClick={handleBulkSubmit} className="btn-primary" style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+                <Save size={18} /> Save All Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showModal && (
         <div style={styles.modalOverlay}>
@@ -406,35 +594,11 @@ const Items = () => {
               <h3>{isEditing ? 'Edit Item' : 'Add New Item'}</h3>
               <button onClick={resetForm} style={styles.closeBtn}><X /></button>
             </div>
-            
-            <div style={styles.modalTabsContainer}>
-              <button 
-                type="button" 
-                style={activeTab === 'basic' ? styles.activeModalTab : styles.modalTab} 
-                onClick={() => setActiveTab('basic')}
-              >
-                1. Basic Info
-              </button>
-              <button 
-                type="button" 
-                style={activeTab === 'pricing' ? styles.activeModalTab : styles.modalTab} 
-                onClick={() => setActiveTab('pricing')}
-              >
-                2. Pricing & Portions
-              </button>
-              <button 
-                type="button" 
-                style={activeTab === 'extras' ? styles.activeModalTab : styles.modalTab} 
-                onClick={() => setActiveTab('extras')}
-              >
-                3. Extras (Spice & Addons)
-              </button>
-            </div>
 
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit} style={{display: 'flex', flexDirection: 'column', gap: '2rem'}}>
               
-              {/* TAB 1: BASIC INFO */}
-              {activeTab === 'basic' && (
+              <div style={styles.formSection}>
+                <h4 style={styles.formSectionTitle}>1. Basic Information</h4>
                 <div style={styles.formGrid}>
                   <div style={styles.formLeft}>
                     <div style={styles.formGroup}>
@@ -478,17 +642,36 @@ const Items = () => {
                         </select>
                       </div>
                     )}
+
+                    <div style={styles.formGroup}>
+                      <label style={{display: 'flex', alignItems: 'center', gap: '0.8rem', cursor: 'pointer', color: 'var(--text-main)', marginTop: '0.5rem'}}>
+                        <input 
+                          type="checkbox" 
+                          name="isAvailable"
+                          checked={formData.isAvailable} 
+                          onChange={handleInputChange}
+                          style={{width: '18px', height: '18px'}}
+                        />
+                        Item is Available (In Stock)
+                      </label>
+                    </div>
+
                   </div>
 
                   <div style={styles.formRight}>
                     <label style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '0.4rem', display: 'block' }}>Item Image</label>
                     <div style={styles.uploadArea} onClick={() => document.getElementById('imageInput').click()}>
-                      {imagePreview ? (
+                      {isCompressing ? (
+                         <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px'}}>
+                           <Spinner size={24} color="var(--primary-yellow)" />
+                           <span>Compressing...</span>
+                         </div>
+                      ) : imagePreview ? (
                         <img src={imagePreview} alt="Preview" style={styles.previewImg} />
                       ) : (
                         <>
                           <Upload size={28} />
-                          <span>Click to upload</span>
+                          <span>Click to upload (Auto-compressed)</span>
                         </>
                       )}
                       <input 
@@ -501,203 +684,127 @@ const Items = () => {
                     </div>
                   </div>
                 </div>
-              )}
+              </div>
 
-              {/* TAB 2: PRICING */}
-              {activeTab === 'pricing' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', minHeight: '200px' }}>
-                  <div style={styles.formGroup}>
-                    <label>Price Type</label>
-                    <div style={{display: 'flex', gap: '1rem', marginTop: '0.5rem'}}>
-                      <label style={styles.radioLabel}>
-                        <input 
-                          type="radio" 
-                          name="priceType" 
-                          value="single" 
-                          checked={formData.priceType === 'single'} 
-                          onChange={handleInputChange} 
-                        />
-                        Single Price (e.g. Burger)
-                      </label>
-                      <label style={styles.radioLabel}>
-                        <input 
-                          type="radio" 
-                          name="priceType" 
-                          value="variants" 
-                          checked={formData.priceType === 'variants'} 
-                          onChange={handleInputChange} 
-                        />
-                        Multiple Portions (e.g. Half/Full/KG)
-                      </label>
-                    </div>
-                  </div>
-
-                  {formData.priceType === 'single' ? (
-                    <div style={styles.formGroup}>
-                      <label>Item Price (Rs.)</label>
+              <div style={styles.formSection}>
+                <h4 style={styles.formSectionTitle}>2. Pricing & Portions</h4>
+                <div style={styles.formGroup}>
+                  <label>Price Type</label>
+                  <div style={{display: 'flex', gap: '1rem', marginTop: '0.5rem'}}>
+                    <label style={styles.radioLabel}>
                       <input 
-                        type="number" 
-                        name="price" 
-                        value={formData.price} 
+                        type="radio" 
+                        name="priceType" 
+                        value="single" 
+                        checked={formData.priceType === 'single'} 
                         onChange={handleInputChange} 
-                        placeholder="e.g. 350"
                       />
-                    </div>
-                  ) : (
-                    <div style={{...styles.formGroup, backgroundColor: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)'}}>
-                      <label>Define Portions/Variants</label>
-                      {formData.variants.map((variant, index) => (
-                        <div key={index} style={styles.dynamicRow}>
-                          <input 
-                            placeholder="Portion Name (e.g. Half)" 
-                            value={variant.name} 
-                            onChange={(e) => handleVariantChange(index, 'name', e.target.value)} 
-                            style={{ flex: 2 }}
-                            required
-                          />
-                          <input 
-                            placeholder="Price (Rs.)" 
-                            type="number" 
-                            value={variant.price} 
-                            onChange={(e) => handleVariantChange(index, 'price', e.target.value)} 
-                            style={{ flex: 1 }}
-                            required
-                          />
-                          <button type="button" onClick={() => handleRemoveVariant(index)} style={styles.removeBtn}><X size={18} /></button>
-                        </div>
-                      ))}
-                      <button type="button" onClick={handleAddVariant} style={styles.addBtn}>
-                        <PlusCircle size={16} /> Add Variant
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* TAB 3: EXTRAS */}
-              {activeTab === 'extras' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', minHeight: '200px' }}>
-                  <div style={{...styles.formGroup, backgroundColor: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)'}}>
-                    <label style={{display: 'flex', alignItems: 'center', gap: '0.8rem', cursor: 'pointer', color: 'var(--text-main)', fontWeight: 'bold'}}>
-                      <input 
-                        type="checkbox" 
-                        name="spiceLevel"
-                        checked={formData.spiceLevel} 
-                        onChange={handleInputChange}
-                        style={{width: '20px', height: '20px'}}
-                      />
-                      Ask for Spice Level?
+                      Single Price (e.g. Burger)
                     </label>
-                    <p style={{fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: '2.3rem', marginTop: '4px'}}>
-                      If enabled, customers will be asked to choose Mild, Normal, Spicy, or Extra Spicy.
-                    </p>
+                    <label style={styles.radioLabel}>
+                      <input 
+                        type="radio" 
+                        name="priceType" 
+                        value="variants" 
+                        checked={formData.priceType === 'variants'} 
+                        onChange={handleInputChange} 
+                      />
+                      Multiple Portions (e.g. Half/Full/KG)
+                    </label>
                   </div>
+                </div>
 
+                {formData.priceType === 'single' ? (
+                  <div style={styles.formGroup}>
+                    <label>Item Price (Rs.)</label>
+                    <input 
+                      type="number" 
+                      name="price" 
+                      value={formData.price} 
+                      onChange={handleInputChange} 
+                      placeholder="e.g. 350"
+                    />
+                  </div>
+                ) : (
                   <div style={{...styles.formGroup, backgroundColor: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)'}}>
-                    <label>Add-ons / Extras (e.g. Raita, Extra Cheese)</label>
-                    {formData.addons.map((addon, index) => (
+                    <label>Define Portions/Variants</label>
+                    {formData.variants.map((variant, index) => (
                       <div key={index} style={styles.dynamicRow}>
                         <input 
-                          placeholder="Addon Name" 
-                          value={addon.name} 
-                          onChange={(e) => handleAddonChange(index, 'name', e.target.value)} 
+                          placeholder="Portion Name (e.g. Half)" 
+                          value={variant.name} 
+                          onChange={(e) => handleVariantChange(index, 'name', e.target.value)} 
                           style={{ flex: 2 }}
                           required
                         />
                         <input 
                           placeholder="Price (Rs.)" 
                           type="number" 
-                          value={addon.price} 
-                          onChange={(e) => handleAddonChange(index, 'price', e.target.value)} 
+                          value={variant.price} 
+                          onChange={(e) => handleVariantChange(index, 'price', e.target.value)} 
                           style={{ flex: 1 }}
                           required
                         />
-                        <button type="button" onClick={() => handleRemoveAddon(index)} style={styles.removeBtn}><X size={18} /></button>
+                        <button type="button" onClick={() => handleRemoveVariant(index)} style={styles.removeBtn}><X size={18} /></button>
                       </div>
                     ))}
-                    <button type="button" onClick={handleAddAddon} style={styles.addBtn}>
-                      <PlusCircle size={16} /> Add Extra
+                    <button type="button" onClick={handleAddVariant} style={styles.addBtn}>
+                      <PlusCircle size={16} /> Add Variant
                     </button>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
 
-              {/* Navigation / Submit Buttons */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '2rem' }}>
-                <div>
-                  {activeTab !== 'basic' && (
-                    <button 
-                      type="button" 
-                      onClick={() => setActiveTab(activeTab === 'extras' ? 'pricing' : 'basic')}
-                      className="btn-secondary"
-                    >
-                      Back
-                    </button>
-                  )}
-                </div>
-                <div>
-                  {activeTab !== 'extras' ? (
-                    <button 
-                      type="button" 
-                      onClick={() => setActiveTab(activeTab === 'basic' ? 'pricing' : 'extras')}
-                      className="btn-primary"
-                    >
-                      Next Step
-                    </button>
-                  ) : (
-                    <button type="submit" className="btn-primary">
-                      {isEditing ? 'Update Item' : 'Save Item'}
-                    </button>
-                  )}
+              <div style={styles.formSection}>
+                <h4 style={styles.formSectionTitle}>3. Extras & Sides</h4>
+                <div style={{...styles.formGroup, backgroundColor: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)'}}>
+                  <label style={{display: 'flex', alignItems: 'center', gap: '0.8rem', cursor: 'pointer', color: 'var(--text-main)', fontWeight: 'bold'}}>
+                    <input 
+                      type="checkbox" 
+                      name="spiceLevel"
+                      checked={formData.spiceLevel} 
+                      onChange={handleInputChange}
+                      style={{width: '20px', height: '20px'}}
+                    />
+                    Ask for Spice Level?
+                  </label>
+                  <p style={{fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: '2.3rem', marginTop: '4px'}}>
+                    If enabled, customers will be asked to choose Mild, Normal, Spicy, or Extra Spicy.
+                  </p>
                 </div>
 
-                {/* Variants Section */}
-                <div style={{ gridColumn: '1 / -1', marginTop: '0.5rem', borderTop: '1px solid var(--glass-border)', paddingTop: '1rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.8rem' }}>
-                    <h4 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-main)', fontWeight: '800' }}>Item Variants / Options (Optional)</h4>
-                    <button
-                      type="button"
-                      onClick={handleAddVariant}
-                      style={{ fontSize: '0.8rem', color: 'var(--primary-yellow)', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.2rem', cursor: 'pointer' }}
-                    >
-                      <Plus size={14} /> Add Option
-                    </button>
-                  </div>
-
-                  {formData.variants.length > 0 ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '180px', overflowY: 'auto', paddingRight: '0.4rem' }}>
-                      {formData.variants.map((v, index) => (
-                        <div key={index} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                          <input
-                            type="text"
-                            placeholder="Option Name (e.g. Chest / With Cheese)"
-                            value={v.name}
-                            onChange={(e) => handleVariantChange(index, 'name', e.target.value)}
-                            required
-                            style={{ flex: 2, padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--glass-border)', backgroundColor: 'var(--glass)', color: 'var(--text-main)', fontSize: '0.85rem' }}
-                          />
-                          <input
-                            type="number"
-                            placeholder="Price (Rs.)"
-                            value={v.price}
-                            onChange={(e) => handleVariantChange(index, 'price', Number(e.target.value))}
-                            required
-                            style={{ flex: 1, padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--glass-border)', backgroundColor: 'var(--glass)', color: 'var(--text-main)', fontSize: '0.85rem' }}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveVariant(index)}
-                            style={{ color: 'var(--accent-red)', cursor: 'pointer', padding: '0.2rem' }}
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      ))}
+                <div style={{...styles.formGroup, backgroundColor: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', marginTop: '1rem'}}>
+                  <label>Extras / Sides (e.g. Raita, Extra Cheese)</label>
+                  {formData.addons.map((addon, index) => (
+                    <div key={index} style={styles.dynamicRow}>
+                      <input 
+                        placeholder="Extra/Side Name" 
+                        value={addon.name} 
+                        onChange={(e) => handleAddonChange(index, 'name', e.target.value)} 
+                        style={{ flex: 2 }}
+                        required
+                      />
+                      <input 
+                        placeholder="Price (Rs.)" 
+                        type="number" 
+                        value={addon.price} 
+                        onChange={(e) => handleAddonChange(index, 'price', e.target.value)} 
+                        style={{ flex: 1 }}
+                        required
+                      />
+                      <button type="button" onClick={() => handleRemoveAddon(index)} style={styles.removeBtn}><X size={18} /></button>
                     </div>
-                  ) : (
-                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0, fontStyle: 'italic' }}>No variants added. Item will use the main price above.</p>
-                  )}
+                  ))}
+                  <button type="button" onClick={handleAddAddon} style={styles.addBtn}>
+                    <PlusCircle size={16} /> Add Extra/Side
+                  </button>
                 </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem', borderTop: '1px solid var(--glass-border)', paddingTop: '1.5rem' }}>
+                <button type="submit" className="btn-primary" disabled={isCompressing}>
+                  {isEditing ? 'Update Item' : 'Save Item'}
+                </button>
               </div>
 
             </form>
@@ -722,6 +829,8 @@ const styles = {
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: '1.25rem',
+    flexWrap: 'wrap',
+    gap: '1rem'
   },
   sectionTitle: {
     fontSize: '1.3rem',
@@ -731,6 +840,23 @@ const styles = {
   sectionSubtitle: {
     color: 'var(--text-muted)',
     fontSize: '0.8rem',
+  },
+  searchBar: {
+    display: 'flex',
+    alignItems: 'center',
+    backgroundColor: 'var(--glass)',
+    border: '1px solid var(--glass-border)',
+    borderRadius: '8px',
+    padding: '0.4rem 0.8rem',
+    gap: '0.5rem',
+  },
+  searchInput: {
+    background: 'none',
+    border: 'none',
+    color: 'var(--text-main)',
+    outline: 'none',
+    width: '200px',
+    fontSize: '0.9rem'
   },
   tabsContainer: {
     display: 'flex',
@@ -786,7 +912,7 @@ const styles = {
   },
   grid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(4, 1fr)',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
     gap: '1.5rem',
   },
   itemCard: {
@@ -802,6 +928,23 @@ const styles = {
     transition: 'transform 0.3s ease, box-shadow 0.3s ease',
     boxSizing: 'border-box',
     overflow: 'hidden',
+  },
+  outOfStockOverlay: {
+    position: 'absolute',
+    top: '30%',
+    left: '50%',
+    transform: 'translate(-50%, -50%) rotate(-15deg)',
+    backgroundColor: 'rgba(255, 59, 48, 0.9)',
+    color: '#fff',
+    padding: '0.5rem 1rem',
+    fontWeight: '900',
+    fontSize: '1.2rem',
+    borderRadius: '8px',
+    zIndex: 5,
+    border: '2px solid #fff',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+    pointerEvents: 'none',
+    whiteSpace: 'nowrap'
   },
   menuDotContainer: {
     position: 'absolute',
@@ -831,7 +974,7 @@ const styles = {
     boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
     display: 'flex',
     flexDirection: 'column',
-    width: '110px',
+    width: '140px',
     zIndex: 20,
     overflow: 'hidden',
   },
@@ -860,7 +1003,7 @@ const styles = {
   itemImage: {
     width: '100%',
     height: '100%',
-    objectFit: 'contain',
+    objectFit: 'cover',
   },
   placeholderContainer: {
     width: '100%',
@@ -869,17 +1012,6 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'var(--glass)',
-  },
-  itemCategoryBadge: {
-    position: 'absolute',
-    top: '0.5rem',
-    left: '0.5rem',
-    padding: '0.3rem 0.7rem',
-    backgroundColor: 'var(--primary-yellow)',
-    color: '#000',
-    borderRadius: '20px',
-    fontSize: '0.7rem',
-    fontWeight: '800',
   },
   itemHeaderContainer: {
     marginBottom: '1rem',
@@ -923,6 +1055,13 @@ const styles = {
     borderRadius: '12px',
     fontSize: '0.7rem'
   },
+  paginationContainer: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: '2rem',
+    gap: '1.5rem'
+  },
   modalOverlay: {
     position: 'fixed',
     top: 0,
@@ -954,35 +1093,20 @@ const styles = {
     marginBottom: '1.25rem',
     color: 'var(--text-main)',
   },
-  modalTabsContainer: {
-    display: 'flex',
-    borderBottom: '1px solid var(--glass-border)',
-    marginBottom: '1.5rem',
-    gap: '1rem'
+  formSection: {
+    marginBottom: '1rem'
   },
-  modalTab: {
-    padding: '0.8rem 0',
-    background: 'none',
-    border: 'none',
-    color: 'var(--text-muted)',
-    fontWeight: '600',
-    cursor: 'pointer',
-    borderBottom: '2px solid transparent',
-  },
-  activeModalTab: {
-    padding: '0.8rem 0',
-    background: 'none',
-    border: 'none',
+  formSectionTitle: {
     color: 'var(--primary-yellow)',
-    fontWeight: 'bold',
-    cursor: 'pointer',
-    borderBottom: '2px solid var(--primary-yellow)',
+    borderBottom: '1px solid var(--glass-border)',
+    paddingBottom: '0.5rem',
+    marginBottom: '1rem',
+    fontSize: '1rem'
   },
   formGrid: {
     display: 'grid',
     gridTemplateColumns: '1.2fr 1fr',
     gap: '1.5rem',
-    minHeight: '200px'
   },
   formLeft: {
     display: 'flex',
@@ -1038,6 +1162,14 @@ const styles = {
     marginTop: '1rem',
     width: 'fit-content',
     fontSize: '0.85rem'
+  },
+  bulkInput: {
+    backgroundColor: 'var(--glass)',
+    border: '1px solid var(--glass-border)',
+    color: 'var(--text-main)',
+    padding: '0.3rem 0.5rem',
+    borderRadius: '4px',
+    outline: 'none'
   },
   uploadArea: {
     flex: 1,

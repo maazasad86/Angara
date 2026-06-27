@@ -32,10 +32,10 @@ const Dashboard = () => {
   const fetchDashboardData = async () => {
     try {
       const [itemsRes, catsRes, dealsRes, summaryRes] = await Promise.all([
-        axios.get('http://localhost:5000/api/items'),
-        axios.get('http://localhost:5000/api/categories'),
-        axios.get('http://localhost:5000/api/deals'),
-        axios.get('http://localhost:5000/api/dashboard/today')
+        axios.get(`http://${window.location.hostname}:5000/api/items`),
+        axios.get(`http://${window.location.hostname}:5000/api/categories`),
+        axios.get(`http://${window.location.hostname}:5000/api/deals`),
+        axios.get(`http://${window.location.hostname}:5000/api/dashboard/today`)
       ]);
 
       const items = itemsRes.data || [];
@@ -69,7 +69,7 @@ const Dashboard = () => {
     }
 
     try {
-      await axios.post('http://localhost:5000/api/expenses', {
+      await axios.post(`http://${window.location.hostname}:5000/api/expenses`, {
         amount: expenseAmount,
         description: expenseDesc
       });

@@ -30,6 +30,7 @@ app.use('/api/sales', require('./routes/sales'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/expenses', require('./routes/expenses'));
 app.use('/api/dashboard', require('./routes/dashboard'));
+app.use('/api/print', require('./routes/printer'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
