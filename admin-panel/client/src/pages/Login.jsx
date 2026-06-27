@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { Lock, Mail, AlertCircle, Sun, Moon } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
+import logoImg from '../assets/logo.png';
+
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -17,7 +19,7 @@ const Login = () => {
     setLoading(true);
     setError('');
     try {
-      const res = await axios.post(`http://${window.location.hostname}:5000/api/auth/login`, { email, password });
+      const res = await axios.post(`http://${(window.location.hostname || 'localhost')}:5000/api/auth/login`, { email, password });
       localStorage.setItem('token', res.data.token);
       localStorage.setItem('user', JSON.stringify(res.data.user));
       navigate('/dashboard');
@@ -36,7 +38,7 @@ const Login = () => {
 
       <div className="glass-card" style={styles.card}>
         <div style={styles.header}>
-          <h1 style={styles.title}>Admin <span style={{ color: 'var(--primary-yellow)' }}>Panel</span></h1>
+          <img src={logoImg} alt="Angara Logo" style={{ width: '48px', height: 'auto', marginBottom: '1.5rem' }} />
           <p style={styles.subtitle}>Welcome back! Please login to your account.</p>
         </div>
 

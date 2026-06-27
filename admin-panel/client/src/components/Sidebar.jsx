@@ -14,6 +14,8 @@ import {
   Wallet
 } from 'lucide-react';
 
+import logoImg from '../assets/logo.png';
+
 const Sidebar = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -41,8 +43,8 @@ const Sidebar = ({ isOpen, onClose }) => {
   return (
     <div className={`sidebar-container ${isOpen ? 'open' : ''}`} style={{ ...styles.sidebar, transform: isOpen ? 'translateX(0)' : 'translateX(-100%)', zIndex: 1000 }}>
       <div style={styles.logoContainer}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={styles.logoIcon}>A</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', paddingLeft: '0.5rem' }}>
+          <img src={logoImg} alt="Angara Logo" style={{ width: '48px', height: 'auto' }} />
           <h2 style={styles.logoText}>ANGARA</h2>
         </div>
         <button className="mobile-header-btn" onClick={onClose} style={styles.closeBtn}>

@@ -39,9 +39,9 @@ const Deals = () => {
   const fetchData = async () => {
     try {
       const [dealsRes, itemsRes, catsRes] = await Promise.all([
-        axios.get(`http://${window.location.hostname}:5000/api/deals`),
-        axios.get(`http://${window.location.hostname}:5000/api/items`),
-        axios.get(`http://${window.location.hostname}:5000/api/categories`)
+        axios.get(`http://${(window.location.hostname || 'localhost')}:5000/api/deals`),
+        axios.get(`http://${(window.location.hostname || 'localhost')}:5000/api/items`),
+        axios.get(`http://${(window.location.hostname || 'localhost')}:5000/api/categories`)
       ]);
       setDeals(dealsRes.data);
       setItems(itemsRes.data);
@@ -72,7 +72,7 @@ const Deals = () => {
     const id = confirmModal.dealId;
     if (!id) return;
     try {
-      await axios.delete(`http://${window.location.hostname}:5000/api/deals/${id}`);
+      await axios.delete(`http://${(window.location.hostname || 'localhost')}:5000/api/deals/${id}`);
       setDeals(deals.filter(d => d._id !== id));
       setConfirmModal({ isOpen: false, dealId: null });
     } catch (err) {

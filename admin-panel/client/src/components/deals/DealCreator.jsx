@@ -111,10 +111,10 @@ const DealCreator = ({ items, categories, initialData, onSave, onCancel }) => {
 
     try {
       if (initialData) {
-        const res = await axios.put(`http://${window.location.hostname}:5000/api/deals/${initialData._id}`, data);
+        const res = await axios.put(`http://${(window.location.hostname || 'localhost')}:5000/api/deals/${initialData._id}`, data);
         onSave(res.data, true);
       } else {
-        const res = await axios.post(`http://${window.location.hostname}:5000/api/deals`, data);
+        const res = await axios.post(`http://${(window.location.hostname || 'localhost')}:5000/api/deals`, data);
         onSave(res.data, false);
       }
     } catch (err) {

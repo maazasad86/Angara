@@ -78,9 +78,9 @@ const POS = () => {
   const fetchData = async () => {
     try {
       const [itemsRes, catsRes, dealsRes] = await Promise.all([
-        axios.get(`http://${window.location.hostname}:5000/api/items`),
-        axios.get(`http://${window.location.hostname}:5000/api/categories`),
-        axios.get(`http://${window.location.hostname}:5000/api/deals`)
+        axios.get(`http://${(window.location.hostname || 'localhost')}:5000/api/items`),
+        axios.get(`http://${(window.location.hostname || 'localhost')}:5000/api/categories`),
+        axios.get(`http://${(window.location.hostname || 'localhost')}:5000/api/deals`)
       ]);
       setItems(itemsRes.data);
       setCategories(catsRes.data);
@@ -261,7 +261,7 @@ const POS = () => {
 
     try {
       if (desiItems.length > 0) {
-        await axios.post(`http://${window.location.hostname}:5000/api/print`, {
+        await axios.post(`http://${(window.location.hostname || 'localhost')}:5000/api/print`, {
           type: 'KOT_DESI',
           items: desiItems,
           orderType,
@@ -270,7 +270,7 @@ const POS = () => {
       }
       
       if (fastFoodItems.length > 0) {
-        await axios.post(`http://${window.location.hostname}:5000/api/print`, {
+        await axios.post(`http://${(window.location.hostname || 'localhost')}:5000/api/print`, {
           type: 'KOT_FASTFOOD',
           items: fastFoodItems,
           orderType,
@@ -352,7 +352,7 @@ const POS = () => {
 
   const handleOpenShiftModal = async () => {
     try {
-      const res = await axios.get(`http://${window.location.hostname}:5000/api/reports/current-shift`);
+      const res = await axios.get(`http://${(window.location.hostname || 'localhost')}:5000/api/reports/current-shift`);
       setShiftData(res.data);
       setDrawerCashInput(''); // Explicitly empty
       setShowShiftModal(true);
@@ -363,7 +363,7 @@ const POS = () => {
 
   const submitShiftClose = async () => {
     try {
-      const res = await axios.post(`http://${window.location.hostname}:5000/api/reports/close-shift`, {
+      const res = await axios.post(`http://${(window.location.hostname || 'localhost')}:5000/api/reports/close-shift`, {
         drawerCash: drawerCashInput,
         notes: 'Closed via POS'
       });
@@ -399,7 +399,7 @@ const POS = () => {
       }));
 
       // Save to database
-      const res = await axios.post(`http://${window.location.hostname}:5000/api/sales`, {
+      const res = await axios.post(`http://${(window.location.hostname || 'localhost')}:5000/api/sales`, {
         items: saleItems,
         totalAmount: total,
         orderType,
@@ -408,7 +408,7 @@ const POS = () => {
       });
 
       // Send to printer silently
-      await axios.post(`http://${window.location.hostname}:5000/api/print`, {
+      await axios.post(`http://${(window.location.hostname || 'localhost')}:5000/api/print`, {
           type: 'CUSTOMER_RECEIPT',
           items: cart,
           orderType,

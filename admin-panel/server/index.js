@@ -2,8 +2,14 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const path = require('path');
 
-dotenv.config();
+dotenv.config({ path: path.join(__dirname, '.env') });
+
+// Fallback for packaged app without .env
+if (!process.env.MONGO_URI) {
+    process.env.MONGO_URI = 'mongodb://127.0.0.1:27017/angara';
+}
 
 // Global crash prevention
 process.on('unhandledRejection', (reason, promise) => {
@@ -11,8 +17,6 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 mongoose.set('bufferCommands', false); // Disable buffering so queries fail fast instead of crashing the server
-
-const path = require('path');
 
 const app = express();
 

@@ -57,8 +57,8 @@ const Items = () => {
     setLoading(true);
     try {
       const [itemsRes, catsRes] = await Promise.all([
-        axios.get(`http://${window.location.hostname}:5000/api/items?page=${page}&limit=${LIMIT}&search=${search}`),
-        axios.get(`http://${window.location.hostname}:5000/api/categories`)
+        axios.get(`http://${(window.location.hostname || 'localhost')}:5000/api/items?page=${page}&limit=${LIMIT}&search=${search}`),
+        axios.get(`http://${(window.location.hostname || 'localhost')}:5000/api/categories`)
       ]);
       
       if (itemsRes.data.items) {
@@ -163,9 +163,9 @@ const Items = () => {
 
     try {
       if (isEditing) {
-        await axios.put(`http://${window.location.hostname}:5000/api/items/${isEditing}`, data);
+        await axios.put(`http://${(window.location.hostname || 'localhost')}:5000/api/items/${isEditing}`, data);
       } else {
-        await axios.post(`http://${window.location.hostname}:5000/api/items`, data);
+        await axios.post(`http://${(window.location.hostname || 'localhost')}:5000/api/items`, data);
       }
       resetForm();
       fetchData(currentPage, searchQuery);
@@ -214,7 +214,7 @@ const Items = () => {
     if (!id) return;
     
     try {
-      await axios.delete(`http://${window.location.hostname}:5000/api/items/${id}`);
+      await axios.delete(`http://${(window.location.hostname || 'localhost')}:5000/api/items/${id}`);
       fetchData(currentPage, searchQuery);
     } catch (err) {
       alert(err.response?.data?.message || 'Error deleting item');
@@ -225,7 +225,7 @@ const Items = () => {
     try {
       // Optimistic update
       setItems(items.map(item => item._id === id ? { ...item, isAvailable: !currentStatus } : item));
-      await axios.put(`http://${window.location.hostname}:5000/api/items/${id}/toggle-availability`);
+      await axios.put(`http://${(window.location.hostname || 'localhost')}:5000/api/items/${id}/toggle-availability`);
     } catch (err) {
       alert('Failed to toggle status');
       fetchData(currentPage, searchQuery); // Revert on failure
@@ -260,7 +260,7 @@ const Items = () => {
         price: item.price,
         variants: item.variants
       }));
-      await axios.put(`http://${window.location.hostname}:5000/api/items/bulk/update-prices`, { updates });
+      await axios.put(`http://${(window.location.hostname || 'localhost')}:5000/api/items/bulk/update-prices`, { updates });
       setShowBulkModal(false);
       fetchData(currentPage, searchQuery);
     } catch(err) {
