@@ -17,7 +17,7 @@ router.get('/', async (req, res) => {
 // Add an item
 router.post('/', upload.single('image'), async (req, res) => {
     try {
-        const { name, category, subCategory, price, variants } = req.body;
+        const { name, category, subCategory, price, priceType, spiceLevel, variants, addons } = req.body;
 
         if (!req.file) {
             return res.status(400).json({ message: 'Image is required' });
@@ -27,8 +27,9 @@ router.post('/', upload.single('image'), async (req, res) => {
         const result = await uploadToCloudinary(req.file.buffer, req.file.mimetype);
         const imageUrl = result.secure_url;
 
-        // Parse variants if sent as JSON string
+        // Parse JSON strings
         let parsedVariants = [];
+        let parsedAddons = [];
         if (variants) {
             if (typeof variants === 'string') {
                 try { parsedVariants = JSON.parse(variants); } catch(e) {}
@@ -36,12 +37,18 @@ router.post('/', upload.single('image'), async (req, res) => {
                 parsedVariants = variants;
             }
         }
+        if (addons) {
+            try { parsedAddons = JSON.parse(addons); } catch(e) {}
+        }
 
         const newItem = new Item({ 
             name, category, subCategory,
-            price: parsedVariants.length > 0 ? 0 : Number(price), 
+            priceType: priceType || 'single',
+            price: Number(price) || 0, 
             image: imageUrl,
-            variants: parsedVariants
+            variants: parsedVariants,
+            spiceLevel: spiceLevel === 'true',
+            addons: parsedAddons
         });
         await newItem.save();
 
@@ -57,6 +64,16 @@ router.post('/', upload.single('image'), async (req, res) => {
 router.put('/:id', upload.single('image'), async (req, res) => {
     try {
         const updateData = { ...req.body };
+
+        if (updateData.variants) {
+            try { updateData.variants = JSON.parse(updateData.variants); } catch(e) {}
+        }
+        if (updateData.addons) {
+            try { updateData.addons = JSON.parse(updateData.addons); } catch(e) {}
+        }
+        if (updateData.spiceLevel !== undefined) {
+            updateData.spiceLevel = updateData.spiceLevel === 'true';
+        }
 
         if (req.file) {
             const result = await uploadToCloudinary(req.file.buffer, req.file.mimetype);

@@ -3,7 +3,7 @@ import axios from 'axios';
 import Layout from '../components/Layout';
 import ConfirmModal from '../components/ConfirmModal';
 import { Spinner } from '../components/ui/spinner-1';
-import { Plus, Edit2, Trash2, X, Upload, Package, MoreVertical } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, Upload, Package, MoreVertical, PlusCircle } from 'lucide-react';
 
 const Items = () => {
   const [items, setItems] = useState([]);
@@ -12,16 +12,19 @@ const Items = () => {
 
   // Form State
   const [showModal, setShowModal] = useState(false);
-  const [deleteId, setDeleteId] = useState(null);
+  const [activeTab, setActiveTab] = useState('basic'); // 'basic' | 'pricing' | 'extras'
   const [showDropdown, setShowDropdown] = useState(null);
   const [isEditing, setIsEditing] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
     category: '',
     subCategory: '',
+    priceType: 'single',
     price: '',
-    image: null,
-    variants: []
+    variants: [],
+    spiceLevel: false,
+    addons: [],
+    image: null
   });
   const [imagePreview, setImagePreview] = useState(null);
 
@@ -51,8 +54,8 @@ const Items = () => {
   };
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+    const { name, value, type, checked } = e.target;
+    setFormData({ ...formData, [name]: type === 'checkbox' ? checked : value });
   };
 
   const handleImageChange = (e) => {
@@ -63,26 +66,34 @@ const Items = () => {
     }
   };
 
+  // Variants handlers
   const handleAddVariant = () => {
-    setFormData(prev => ({
-      ...prev,
-      variants: [...prev.variants, { name: '', price: '' }]
-    }));
+    setFormData({ ...formData, variants: [...formData.variants, { name: '', price: '' }] });
   };
-
   const handleVariantChange = (index, field, value) => {
-    setFormData(prev => {
-      const updated = [...prev.variants];
-      updated[index] = { ...updated[index], [field]: value };
-      return { ...prev, variants: updated };
-    });
+    const newVariants = [...formData.variants];
+    newVariants[index][field] = value;
+    setFormData({ ...formData, variants: newVariants });
+  };
+  const handleRemoveVariant = (index) => {
+    const newVariants = [...formData.variants];
+    newVariants.splice(index, 1);
+    setFormData({ ...formData, variants: newVariants });
   };
 
-  const handleRemoveVariant = (index) => {
-    setFormData(prev => ({
-      ...prev,
-      variants: prev.variants.filter((_, i) => i !== index)
-    }));
+  // Addons handlers
+  const handleAddAddon = () => {
+    setFormData({ ...formData, addons: [...formData.addons, { name: '', price: '' }] });
+  };
+  const handleAddonChange = (index, field, value) => {
+    const newAddons = [...formData.addons];
+    newAddons[index][field] = value;
+    setFormData({ ...formData, addons: newAddons });
+  };
+  const handleRemoveAddon = (index) => {
+    const newAddons = [...formData.addons];
+    newAddons.splice(index, 1);
+    setFormData({ ...formData, addons: newAddons });
   };
 
   const handleSubmit = async (e) => {
@@ -91,8 +102,12 @@ const Items = () => {
     data.append('name', formData.name);
     data.append('category', formData.category);
     data.append('subCategory', formData.subCategory);
-    data.append('price', formData.variants.length > 0 ? 0 : formData.price);
+    data.append('priceType', formData.priceType);
+    data.append('price', formData.price);
+    data.append('spiceLevel', formData.spiceLevel);
     data.append('variants', JSON.stringify(formData.variants));
+    data.append('addons', JSON.stringify(formData.addons));
+
     if (formData.image) {
       data.append('image', formData.image);
     }
@@ -111,10 +126,14 @@ const Items = () => {
   };
 
   const resetForm = () => {
-    setFormData({ name: '', category: '', subCategory: '', price: '', image: null, variants: [] });
+    setFormData({ 
+      name: '', category: '', subCategory: '', priceType: 'single', 
+      price: '', variants: [], spiceLevel: false, addons: [], image: null 
+    });
     setImagePreview(null);
     setShowModal(false);
     setIsEditing(null);
+    setActiveTab('basic');
   };
 
   const handleEdit = (item) => {
@@ -123,11 +142,15 @@ const Items = () => {
       name: item.name,
       category: item.category?._id || '',
       subCategory: item.subCategory || '',
-      price: item.variants && item.variants.length > 0 ? '' : item.price,
-      image: null,
-      variants: item.variants || []
+      priceType: item.priceType || 'single',
+      price: item.price || '',
+      variants: item.variants || [],
+      spiceLevel: item.spiceLevel || false,
+      addons: item.addons || [],
+      image: null
     });
     setImagePreview(item.image);
+    setActiveTab('basic');
     setShowModal(true);
   };
 
@@ -141,14 +164,11 @@ const Items = () => {
   const handleDelete = async () => {
     const id = confirmModal.itemId;
     if (!id) return;
-
-    console.log('handleDelete clicked for ID:', id);
+    
     try {
-      const response = await axios.delete(`http://localhost:5000/api/items/${id}`);
-      console.log('Delete response from server:', response.data);
+      await axios.delete(`http://localhost:5000/api/items/${id}`);
       fetchData();
     } catch (err) {
-      console.error('DELETE ITEM CLIENT ERROR:', err);
       alert(err.response?.data?.message || 'Error deleting item');
     }
   };
@@ -352,8 +372,25 @@ const Items = () => {
                   ))}
                 </div>
               </div>
-            );
-          })
+
+              <div style={styles.itemHeaderContainer}>
+                <div style={styles.itemName}>{item.name}</div>
+                <div style={{fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px', display: 'flex', gap: '8px', flexWrap: 'wrap'}}>
+                  {item.spiceLevel && <span style={styles.chip}>Spicy</span>}
+                  {item.addons?.length > 0 && <span style={styles.chip}>{item.addons.length} Add-ons</span>}
+                </div>
+              </div>
+
+              <div style={styles.itemPriceContainer}>
+                <div style={styles.itemPrice}>
+                  {item.priceType === 'variants' && item.variants?.length > 0 
+                    ? `From Rs. ${Math.min(...item.variants.map(v => v.price))}`
+                    : `Rs. ${item.price}`
+                  }
+                </div>
+              </div>
+            </div>
+          ))
         ) : (
           <div style={styles.noItems}>
             <Package size={48} />
@@ -369,87 +406,249 @@ const Items = () => {
               <h3>{isEditing ? 'Edit Item' : 'Add New Item'}</h3>
               <button onClick={resetForm} style={styles.closeBtn}><X /></button>
             </div>
+            
+            <div style={styles.modalTabsContainer}>
+              <button 
+                type="button" 
+                style={activeTab === 'basic' ? styles.activeModalTab : styles.modalTab} 
+                onClick={() => setActiveTab('basic')}
+              >
+                1. Basic Info
+              </button>
+              <button 
+                type="button" 
+                style={activeTab === 'pricing' ? styles.activeModalTab : styles.modalTab} 
+                onClick={() => setActiveTab('pricing')}
+              >
+                2. Pricing & Portions
+              </button>
+              <button 
+                type="button" 
+                style={activeTab === 'extras' ? styles.activeModalTab : styles.modalTab} 
+                onClick={() => setActiveTab('extras')}
+              >
+                3. Extras (Spice & Addons)
+              </button>
+            </div>
 
             <form onSubmit={handleSubmit}>
-              <div style={styles.formGrid}>
-                {/* Left Column: Fields */}
-                <div style={styles.formLeft}>
-                  <div style={styles.formGroup}>
-                    <label>Item Name</label>
-                    <input
-                      name="name"
-                      value={formData.name}
-                      onChange={handleInputChange}
-                      placeholder="e.g. Chicken Burger"
-                      required
-                    />
-                  </div>
-
-                  <div style={styles.formGroup}>
-                    <label>Category</label>
-                    <select
-                      name="category"
-                      value={formData.category}
-                      onChange={handleInputChange}
-                      required
-                    >
-                      <option value="">Select Category</option>
-                      {categories.map(cat => (
-                        <option key={cat._id} value={cat._id}>{cat.name}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {formData.category && categories.find(c => c._id === formData.category)?.subCategories?.length > 0 && (
+              
+              {/* TAB 1: BASIC INFO */}
+              {activeTab === 'basic' && (
+                <div style={styles.formGrid}>
+                  <div style={styles.formLeft}>
                     <div style={styles.formGroup}>
-                      <label>Sub Category</label>
-                      <select
-                        name="subCategory"
-                        value={formData.subCategory}
-                        onChange={handleInputChange}
+                      <label>Item Name</label>
+                      <input 
+                        name="name" 
+                        value={formData.name} 
+                        onChange={handleInputChange} 
+                        placeholder="e.g. Chicken Karahi"
+                        required 
+                      />
+                    </div>
+
+                    <div style={styles.formGroup}>
+                      <label>Category</label>
+                      <select 
+                        name="category" 
+                        value={formData.category} 
+                        onChange={handleInputChange} 
+                        required
                       >
-                        <option value="">Select Sub Category</option>
-                        {categories.find(c => c._id === formData.category).subCategories.map((sub, idx) => (
-                          <option key={idx} value={sub}>{sub}</option>
+                        <option value="">Select Category</option>
+                        {categories.map(cat => (
+                          <option key={cat._id} value={cat._id}>{cat.name}</option>
                         ))}
                       </select>
                     </div>
-                  )}
 
-                  <div style={styles.formGroup}>
-                    <label>Price (Rs.)</label>
-                    <input
-                      type="number"
-                      name="price"
-                      value={formData.variants.length > 0 ? '' : formData.price}
-                      onChange={handleInputChange}
-                      placeholder={formData.variants.length > 0 ? "Price defined in variants" : "e.g. 350"}
-                      required={formData.variants.length === 0}
-                      disabled={formData.variants.length > 0}
-                    />
+                    {formData.category && categories.find(c => c._id === formData.category)?.subCategories?.length > 0 && (
+                      <div style={styles.formGroup}>
+                        <label>Sub Category</label>
+                        <select 
+                          name="subCategory" 
+                          value={formData.subCategory} 
+                          onChange={handleInputChange}
+                        >
+                          <option value="">Select Sub Category</option>
+                          {categories.find(c => c._id === formData.category).subCategories.map((sub, idx) => (
+                            <option key={idx} value={sub}>{sub}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={styles.formRight}>
+                    <label style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '0.4rem', display: 'block' }}>Item Image</label>
+                    <div style={styles.uploadArea} onClick={() => document.getElementById('imageInput').click()}>
+                      {imagePreview ? (
+                        <img src={imagePreview} alt="Preview" style={styles.previewImg} />
+                      ) : (
+                        <>
+                          <Upload size={28} />
+                          <span>Click to upload</span>
+                        </>
+                      )}
+                      <input 
+                        id="imageInput" 
+                        type="file" 
+                        onChange={handleImageChange} 
+                        hidden 
+                        accept="image/*"
+                      />
+                    </div>
                   </div>
                 </div>
+              )}
 
-                {/* Right Column: Image */}
-                <div style={styles.formRight}>
-                  <label style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '0.4rem', display: 'block' }}>Item Image</label>
-                  <div style={styles.uploadArea} onClick={() => document.getElementById('imageInput').click()}>
-                    {imagePreview ? (
-                      <img src={imagePreview} alt="Preview" style={styles.previewImg} />
-                    ) : (
-                      <>
-                        <Upload size={28} />
-                        <span>Click to upload</span>
-                      </>
-                    )}
-                    <input
-                      id="imageInput"
-                      type="file"
-                      onChange={handleImageChange}
-                      hidden
-                      accept="image/*"
-                    />
+              {/* TAB 2: PRICING */}
+              {activeTab === 'pricing' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', minHeight: '200px' }}>
+                  <div style={styles.formGroup}>
+                    <label>Price Type</label>
+                    <div style={{display: 'flex', gap: '1rem', marginTop: '0.5rem'}}>
+                      <label style={styles.radioLabel}>
+                        <input 
+                          type="radio" 
+                          name="priceType" 
+                          value="single" 
+                          checked={formData.priceType === 'single'} 
+                          onChange={handleInputChange} 
+                        />
+                        Single Price (e.g. Burger)
+                      </label>
+                      <label style={styles.radioLabel}>
+                        <input 
+                          type="radio" 
+                          name="priceType" 
+                          value="variants" 
+                          checked={formData.priceType === 'variants'} 
+                          onChange={handleInputChange} 
+                        />
+                        Multiple Portions (e.g. Half/Full/KG)
+                      </label>
+                    </div>
                   </div>
+
+                  {formData.priceType === 'single' ? (
+                    <div style={styles.formGroup}>
+                      <label>Item Price (Rs.)</label>
+                      <input 
+                        type="number" 
+                        name="price" 
+                        value={formData.price} 
+                        onChange={handleInputChange} 
+                        placeholder="e.g. 350"
+                      />
+                    </div>
+                  ) : (
+                    <div style={{...styles.formGroup, backgroundColor: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)'}}>
+                      <label>Define Portions/Variants</label>
+                      {formData.variants.map((variant, index) => (
+                        <div key={index} style={styles.dynamicRow}>
+                          <input 
+                            placeholder="Portion Name (e.g. Half)" 
+                            value={variant.name} 
+                            onChange={(e) => handleVariantChange(index, 'name', e.target.value)} 
+                            style={{ flex: 2 }}
+                            required
+                          />
+                          <input 
+                            placeholder="Price (Rs.)" 
+                            type="number" 
+                            value={variant.price} 
+                            onChange={(e) => handleVariantChange(index, 'price', e.target.value)} 
+                            style={{ flex: 1 }}
+                            required
+                          />
+                          <button type="button" onClick={() => handleRemoveVariant(index)} style={styles.removeBtn}><X size={18} /></button>
+                        </div>
+                      ))}
+                      <button type="button" onClick={handleAddVariant} style={styles.addBtn}>
+                        <PlusCircle size={16} /> Add Variant
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 3: EXTRAS */}
+              {activeTab === 'extras' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', minHeight: '200px' }}>
+                  <div style={{...styles.formGroup, backgroundColor: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)'}}>
+                    <label style={{display: 'flex', alignItems: 'center', gap: '0.8rem', cursor: 'pointer', color: 'var(--text-main)', fontWeight: 'bold'}}>
+                      <input 
+                        type="checkbox" 
+                        name="spiceLevel"
+                        checked={formData.spiceLevel} 
+                        onChange={handleInputChange}
+                        style={{width: '20px', height: '20px'}}
+                      />
+                      Ask for Spice Level?
+                    </label>
+                    <p style={{fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: '2.3rem', marginTop: '4px'}}>
+                      If enabled, customers will be asked to choose Mild, Normal, Spicy, or Extra Spicy.
+                    </p>
+                  </div>
+
+                  <div style={{...styles.formGroup, backgroundColor: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)'}}>
+                    <label>Add-ons / Extras (e.g. Raita, Extra Cheese)</label>
+                    {formData.addons.map((addon, index) => (
+                      <div key={index} style={styles.dynamicRow}>
+                        <input 
+                          placeholder="Addon Name" 
+                          value={addon.name} 
+                          onChange={(e) => handleAddonChange(index, 'name', e.target.value)} 
+                          style={{ flex: 2 }}
+                          required
+                        />
+                        <input 
+                          placeholder="Price (Rs.)" 
+                          type="number" 
+                          value={addon.price} 
+                          onChange={(e) => handleAddonChange(index, 'price', e.target.value)} 
+                          style={{ flex: 1 }}
+                          required
+                        />
+                        <button type="button" onClick={() => handleRemoveAddon(index)} style={styles.removeBtn}><X size={18} /></button>
+                      </div>
+                    ))}
+                    <button type="button" onClick={handleAddAddon} style={styles.addBtn}>
+                      <PlusCircle size={16} /> Add Extra
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Navigation / Submit Buttons */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '2rem' }}>
+                <div>
+                  {activeTab !== 'basic' && (
+                    <button 
+                      type="button" 
+                      onClick={() => setActiveTab(activeTab === 'extras' ? 'pricing' : 'basic')}
+                      className="btn-secondary"
+                    >
+                      Back
+                    </button>
+                  )}
+                </div>
+                <div>
+                  {activeTab !== 'extras' ? (
+                    <button 
+                      type="button" 
+                      onClick={() => setActiveTab(activeTab === 'basic' ? 'pricing' : 'extras')}
+                      className="btn-primary"
+                    >
+                      Next Step
+                    </button>
+                  ) : (
+                    <button type="submit" className="btn-primary">
+                      {isEditing ? 'Update Item' : 'Save Item'}
+                    </button>
+                  )}
                 </div>
 
                 {/* Variants Section */}
@@ -501,9 +700,6 @@ const Items = () => {
                 </div>
               </div>
 
-              <button type="submit" className="btn-primary" style={{ width: '100%', marginTop: '1.25rem' }}>
-                {isEditing ? 'Update Item' : 'Create Item'}
-              </button>
             </form>
           </div>
         </div>
@@ -721,7 +917,12 @@ const styles = {
     color: 'var(--text-muted)',
     gap: '1rem',
   },
-
+  chip: {
+    padding: '2px 8px',
+    backgroundColor: 'var(--glass-border)',
+    borderRadius: '12px',
+    fontSize: '0.7rem'
+  },
   modalOverlay: {
     position: 'fixed',
     top: 0,
@@ -740,6 +941,9 @@ const styles = {
     maxWidth: '720px',
     padding: '1.75rem',
     backgroundColor: 'var(--bg-card)',
+    borderRadius: '16px',
+    border: '1px solid var(--glass-border)',
+    boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
     maxHeight: '90vh',
     overflowY: 'auto',
   },
@@ -750,10 +954,35 @@ const styles = {
     marginBottom: '1.25rem',
     color: 'var(--text-main)',
   },
+  modalTabsContainer: {
+    display: 'flex',
+    borderBottom: '1px solid var(--glass-border)',
+    marginBottom: '1.5rem',
+    gap: '1rem'
+  },
+  modalTab: {
+    padding: '0.8rem 0',
+    background: 'none',
+    border: 'none',
+    color: 'var(--text-muted)',
+    fontWeight: '600',
+    cursor: 'pointer',
+    borderBottom: '2px solid transparent',
+  },
+  activeModalTab: {
+    padding: '0.8rem 0',
+    background: 'none',
+    border: 'none',
+    color: 'var(--primary-yellow)',
+    fontWeight: 'bold',
+    cursor: 'pointer',
+    borderBottom: '2px solid var(--primary-yellow)',
+  },
   formGrid: {
     display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
+    gridTemplateColumns: '1.2fr 1fr',
     gap: '1.5rem',
+    minHeight: '200px'
   },
   formLeft: {
     display: 'flex',
@@ -764,18 +993,52 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
   },
-  form: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.9rem',
-  },
   formGroup: {
     display: 'flex',
     flexDirection: 'column',
     gap: '0.4rem',
     color: 'var(--text-muted)',
   },
-  select: {},
+  radioLabel: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.4rem',
+    color: 'var(--text-main)',
+    cursor: 'pointer',
+    fontSize: '0.9rem'
+  },
+  dynamicRow: {
+    display: 'flex',
+    gap: '0.8rem',
+    alignItems: 'center',
+    marginTop: '0.8rem'
+  },
+  removeBtn: {
+    background: 'none',
+    border: 'none',
+    color: 'var(--accent-red)',
+    cursor: 'pointer',
+    padding: '4px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 59, 48, 0.1)',
+    borderRadius: '4px'
+  },
+  addBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.4rem',
+    background: 'none',
+    border: '1px dashed var(--glass-border)',
+    color: 'var(--text-main)',
+    padding: '0.6rem 1rem',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    marginTop: '1rem',
+    width: 'fit-content',
+    fontSize: '0.85rem'
+  },
   uploadArea: {
     flex: 1,
     border: '2px dashed var(--glass-border)',
@@ -797,7 +1060,7 @@ const styles = {
     height: '100%',
     objectFit: 'cover',
   },
-  closeBtn: { color: 'var(--text-muted)' }
+  closeBtn: { color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer' }
 };
 
 export default Items;

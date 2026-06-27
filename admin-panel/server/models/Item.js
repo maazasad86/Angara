@@ -13,15 +13,30 @@ const ItemSchema = new mongoose.Schema({
     subCategory: {
         type: String
     },
+    priceType: {
+        type: String,
+        enum: ['single', 'variants'],
+        default: 'single'
+    },
     price: {
         type: Number,
-        default: 0  // 0 means item has variants
+        default: 0
     },
     image: {
         type: String,
         required: true
     },
     variants: [
+        {
+            name: { type: String, required: true },
+            price: { type: Number, required: true }
+        }
+    ],
+    spiceLevel: {
+        type: Boolean,
+        default: false
+    },
+    addons: [
         {
             name: { type: String, required: true },
             price: { type: Number, required: true }
