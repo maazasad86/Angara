@@ -2,7 +2,11 @@ import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import Layout from '../components/Layout';
 import { Spinner } from '../components/ui/spinner-1';
-import { Search, Plus, Minus, Trash2, Printer, ShoppingCart, Package, Tag, X, Clock } from 'lucide-react';
+import { Search, Plus, Minus, Trash2, Printer, ShoppingCart, Package, Tag, X, Clock, LogOut, Archive } from 'lucide-react';
+import CheckoutModal from '../components/pos/CheckoutModal';
+import ShiftModal from '../components/pos/ShiftModal';
+import VariantSelectionModal from '../components/pos/VariantSelectionModal';
+import DealVariantSelectionModal from '../components/pos/DealVariantSelectionModal';
 
 const POS = () => {
   const [items, setItems] = useState([]);
@@ -883,306 +887,61 @@ const POS = () => {
       )}
 
       {/* Cash Calculator / Checkout Modal */}
-      {showCheckoutModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'fadeIn 0.2s ease-out' }}>
-          <div className="glass-card" style={{ width: '380px', padding: '1.5rem', animation: 'scaleIn 0.2s ease-out' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h2 style={{ color: 'var(--text-main)', fontSize: '1.2rem', fontWeight: '800', margin: 0 }}>Cash & Checkout</h2>
-              <button onClick={() => setShowCheckoutModal(false)} style={{ backgroundColor: 'transparent', border: 'none', color: 'var(--text-main)', cursor: 'pointer', padding: 0 }}><X size={20} /></button>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', padding: '0.8rem', backgroundColor: 'rgba(250, 204, 21, 0.1)', borderRadius: '8px', border: '1px solid rgba(250, 204, 21, 0.3)' }}>
-              <span style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--text-main)' }}>Total Bill:</span>
-              <span style={{ fontSize: '1.2rem', fontWeight: '800', color: 'var(--primary-yellow)' }}>Rs. {total.toFixed(0)}</span>
-            </div>
-
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: '0.4rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>Cash Received (Rs.)</label>
-              <input
-                type="number"
-                value={cashReceived}
-                onChange={(e) => setCashReceived(e.target.value)}
-                placeholder="0"
-                style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '2px solid var(--glass-border)', backgroundColor: 'var(--bg)', color: 'var(--text-main)', fontSize: '1.2rem', fontWeight: '700', textAlign: 'right' }}
-                autoFocus
-                onKeyDown={(e) => e.key === 'Enter' && handleCheckoutAndPrint()}
-              />
-            </div>
-
-            <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '1rem' }}>
-              <button onClick={() => setCashReceived(total.toString())} style={{ flex: 1, padding: '0.5rem', backgroundColor: 'rgba(255,255,255,0.05)', color: 'var(--text-main)', border: '1px solid var(--glass-border)', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '0.85rem' }}>Exact</button>
-              <button onClick={() => setCashReceived('500')} style={{ flex: 1, padding: '0.5rem', backgroundColor: 'rgba(255,255,255,0.05)', color: 'var(--text-main)', border: '1px solid var(--glass-border)', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '0.85rem' }}>500</button>
-              <button onClick={() => setCashReceived('1000')} style={{ flex: 1, padding: '0.5rem', backgroundColor: 'rgba(255,255,255,0.05)', color: 'var(--text-main)', border: '1px solid var(--glass-border)', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '0.85rem' }}>1000</button>
-              <button onClick={() => setCashReceived('5000')} style={{ flex: 1, padding: '0.5rem', backgroundColor: 'rgba(255,255,255,0.05)', color: 'var(--text-main)', border: '1px solid var(--glass-border)', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '0.85rem' }}>5000</button>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', padding: '0.8rem', backgroundColor: 'rgba(255, 255, 255, 0.03)', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
-              <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Change to Return:</span>
-              <span style={{ fontSize: '1.2rem', fontWeight: '800', color: (Number(cashReceived) - total) >= 0 ? '#4ade80' : '#ef4444' }}>
-                Rs. {cashReceived ? (Number(cashReceived) - total).toFixed(0) : '0'}
-              </span>
-            </div>
-
-            <div style={{ display: 'flex', gap: '0.8rem' }}>
-              <button onClick={() => setShowCheckoutModal(false)} style={{ flex: 1, padding: '0.8rem', backgroundColor: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-main)', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' }}>Cancel</button>
-              <button onClick={handleCheckoutAndPrint} style={{ flex: 2, padding: '0.8rem', backgroundColor: 'var(--primary-yellow)', color: '#000', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '800', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-                <Printer size={18} /> Confirm
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <CheckoutModal
+        isOpen={showCheckoutModal}
+        onClose={() => setShowCheckoutModal(false)}
+        total={total}
+        cashReceived={cashReceived}
+        setCashReceived={setCashReceived}
+        onConfirm={handleCheckoutAndPrint}
+      />
 
       {/* Close Shift (Z-Report) Modal */}
-      {showShiftModal && shiftData && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'fadeIn 0.2s ease-out' }}>
-          <div className="glass-card" style={{ width: '380px', padding: '1.5rem', animation: 'scaleIn 0.2s ease-out' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h2 style={{ color: '#ef4444', fontSize: '1.2rem', fontWeight: '800', margin: 0 }}>Close Shift (Z-Report)</h2>
-              <button onClick={() => setShowShiftModal(false)} style={{ backgroundColor: 'transparent', border: 'none', color: 'var(--text-main)', cursor: 'pointer', padding: 0 }}><X size={20} /></button>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.8rem', padding: '0.8rem', backgroundColor: 'rgba(255, 255, 255, 0.05)', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
-              <span style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--text-main)' }}>System Cash:</span>
-              <span style={{ fontSize: '1.1rem', fontWeight: '800', color: 'var(--text-main)' }}>Rs. {shiftData.systemCash}</span>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', padding: '0.8rem', backgroundColor: 'rgba(255, 255, 255, 0.05)', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
-              <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Total Orders:</span>
-              <span style={{ fontSize: '0.9rem', fontWeight: 'bold', color: 'var(--text-main)' }}>{shiftData.totalOrders}</span>
-            </div>
-
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: '0.4rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>Actual Drawer Cash (Rs.)</label>
-              <input
-                type="number"
-                value={drawerCashInput}
-                onChange={(e) => setDrawerCashInput(e.target.value)}
-                placeholder="Count cash..."
-                style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '2px solid var(--glass-border)', backgroundColor: 'var(--bg)', color: 'var(--text-main)', fontSize: '1.2rem', fontWeight: '700', textAlign: 'right' }}
-                autoFocus
-              />
-            </div>
-
-            {drawerCashInput && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', padding: '0.8rem', backgroundColor: 'rgba(255, 255, 255, 0.03)', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
-                <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Status:</span>
-                <span style={{ fontSize: '1.1rem', fontWeight: '800', color: (Number(drawerCashInput) - shiftData.systemCash) >= 0 ? (Number(drawerCashInput) === shiftData.systemCash ? '#a3e635' : '#facc15') : '#ef4444' }}>
-                  {Number(drawerCashInput) - shiftData.systemCash === 0 ? 'Exact Match' :
-                    Number(drawerCashInput) - shiftData.systemCash > 0 ? `Excess: Rs. ${Number(drawerCashInput) - shiftData.systemCash}` :
-                      `Shortage: Rs. ${Math.abs(Number(drawerCashInput) - shiftData.systemCash)}`}
-                </span>
-              </div>
-            )}
-
-            <div style={{ display: 'flex', gap: '0.8rem' }}>
-              <button onClick={() => setShowShiftModal(false)} style={{ flex: 1, padding: '0.8rem', backgroundColor: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-main)', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' }}>Cancel</button>
-              <button onClick={submitShiftClose} style={{ flex: 2, padding: '0.8rem', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '800', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-                Close & Send
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {/* Variant Selection Modal */}
-      {showVariantModal && selectedVariantItem && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'fadeIn 0.2s ease-out' }}>
-          <div className="glass-card" style={{ width: '380px', padding: '1.5rem', animation: 'scaleIn 0.2s ease-out' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-              <h3 style={{ color: 'var(--text-main)', fontSize: '1.15rem', fontWeight: '800', margin: 0 }}>Select Variant / Option</h3>
-              <button onClick={() => setShowVariantModal(false)} style={{ backgroundColor: 'transparent', border: 'none', color: 'var(--text-main)', cursor: 'pointer', padding: 0 }}><X size={20} /></button>
-            </div>
-
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-              Choose quantities for <strong style={{ color: 'var(--text-main)' }}>{selectedVariantItem.name}</strong> options:
-            </p>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
-              {selectedVariantItem.variants.map((v, idx) => {
-                const qty = variantQuantities[v.name] || 0;
-                return (
-                  <div
-                    key={idx}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '0.75rem 1rem',
-                      borderRadius: '10px',
-                      border: '1px solid',
-                      borderColor: qty > 0 ? 'var(--primary-yellow)' : 'var(--glass-border)',
-                      backgroundColor: qty > 0 ? 'rgba(250, 204, 21, 0.05)' : 'rgba(255, 255, 255, 0.02)',
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                      <span style={{ fontSize: '0.9rem', fontWeight: '600', color: 'var(--text-main)' }}>{v.name}</span>
-                      <span style={{ fontSize: '0.8rem', color: 'var(--primary-yellow)', fontWeight: '700' }}>Rs. {v.price}</span>
-                    </div>
-
-                    {/* Quantity Selector for this variant */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setVariantQuantities(prev => ({
-                            ...prev,
-                            [v.name]: Math.max(0, qty - 1)
-                          }));
-                        }}
-                        style={{ width: '28px', height: '28px', borderRadius: '8px', backgroundColor: 'var(--glass)', border: '1px solid var(--glass-border)', color: 'var(--text-main)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
-                      >
-                        <Minus size={14} />
-                      </button>
-                      <span style={{ fontSize: '0.95rem', fontWeight: '700', color: qty > 0 ? 'var(--text-main)' : 'var(--text-muted)', minWidth: '20px', textAlign: 'center' }}>
-                        {qty}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setVariantQuantities(prev => ({
-                            ...prev,
-                            [v.name]: qty + 1
-                          }));
-                        }}
-                        style={{ width: '28px', height: '28px', borderRadius: '8px', backgroundColor: 'var(--glass)', border: '1px solid var(--glass-border)', color: 'var(--text-main)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
-                      >
-                        <Plus size={14} />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div style={{ display: 'flex', gap: '0.8rem' }}>
-              <button
-                onClick={() => setShowVariantModal(false)}
-                style={{ flex: 1, padding: '0.75rem', backgroundColor: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-main)', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem' }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  let addedAny = false;
-                  selectedVariantItem.variants.forEach(v => {
-                    const qty = variantQuantities[v.name] || 0;
-                    if (qty > 0) {
-                      addToCart(selectedVariantItem, v, null, qty);
-                      addedAny = true;
-                    }
-                  });
-                  if (addedAny) {
-                    setShowVariantModal(false);
-                    setSelectedVariantItem(null);
-                    setVariantQuantities({});
-                  }
-                }}
-                style={{ flex: 2, padding: '0.75rem', backgroundColor: 'var(--primary-yellow)', color: '#000', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '800', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                disabled={!Object.values(variantQuantities).some(q => q > 0)}
-              >
-                Add to Cart
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ShiftModal
+        isOpen={showShiftModal}
+        onClose={() => setShowShiftModal(false)}
+        shiftData={shiftData}
+        drawerCashInput={drawerCashInput}
+        setDrawerCashInput={setDrawerCashInput}
+        onSubmit={submitShiftClose}
+      />
+      <VariantSelectionModal
+        isOpen={showVariantModal}
+        onClose={() => setShowVariantModal(false)}
+        selectedVariantItem={selectedVariantItem}
+        variantQuantities={variantQuantities}
+        setVariantQuantities={setVariantQuantities}
+        onConfirm={() => {
+          let addedAny = false;
+          selectedVariantItem.variants.forEach(v => {
+            const qty = variantQuantities[v.name] || 0;
+            if (qty > 0) {
+              addToCart(selectedVariantItem, v, null, qty);
+              addedAny = true;
+            }
+          });
+          if (addedAny) {
+            setShowVariantModal(false);
+            setSelectedVariantItem(null);
+            setVariantQuantities({});
+          }
+        }}
+      />
 
       {/* Deal Variant Selection Modal */}
-      {showDealVariantModal && selectedDealForVariants && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'fadeIn 0.2s ease-out' }}>
-          <div className="glass-card" style={{ width: '420px', padding: '1.5rem', maxHeight: '85vh', overflowY: 'auto', animation: 'scaleIn 0.2s ease-out' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-              <h3 style={{ color: 'var(--text-main)', fontSize: '1.15rem', fontWeight: '800', margin: 0 }}>Select Variants for Deal</h3>
-              <button onClick={() => setShowDealVariantModal(false)} style={{ backgroundColor: 'transparent', border: 'none', color: 'var(--text-main)', cursor: 'pointer', padding: 0 }}><X size={20} /></button>
-            </div>
-
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
-              Choose options for the items in <strong style={{ color: 'var(--text-main)' }}>{selectedDealForVariants.name}</strong>:
-            </p>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginBottom: '1.5rem' }}>
-              {selectedDealForVariants.items.map((di, idx) => {
-                const hasVariants = di.item && di.item.variants && di.item.variants.length > 0;
-                if (!hasVariants) return null;
-
-                return (
-                  <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    <div style={{ fontSize: '0.9rem', fontWeight: '700', color: 'var(--text-main)' }}>
-                      {di.item.name} <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: 'var(--text-muted)' }}>(Qty: {di.quantity})</span>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                      {di.item.variants.map((v, vIdx) => {
-                        const isSelected = selectedDealVariants[idx]?.name === v.name;
-                        return (
-                          <label
-                            key={vIdx}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
-                              padding: '0.6rem 0.8rem',
-                              borderRadius: '8px',
-                              border: '1px solid',
-                              borderColor: isSelected ? 'var(--primary-yellow)' : 'var(--glass-border)',
-                              backgroundColor: isSelected ? 'rgba(250, 204, 21, 0.05)' : 'rgba(255, 255, 255, 0.01)',
-                              cursor: 'pointer',
-                              transition: 'all 0.2s'
-                            }}
-                            onClick={() => {
-                              setSelectedDealVariants(prev => ({
-                                ...prev,
-                                [idx]: v
-                              }));
-                            }}
-                          >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                              <input
-                                type="radio"
-                                name={`deal-variant-group-${idx}`}
-                                checked={isSelected}
-                                onChange={() => {
-                                  setSelectedDealVariants(prev => ({
-                                    ...prev,
-                                    [idx]: v
-                                  }));
-                                }}
-                                style={{ cursor: 'pointer', width: '15px', height: '15px', accentColor: 'var(--primary-yellow)' }}
-                              />
-                              <span style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-main)' }}>{v.name}</span>
-                            </div>
-                            <span style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--primary-yellow)' }}>Rs. {v.price}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div style={{ display: 'flex', gap: '0.8rem' }}>
-              <button
-                onClick={() => setShowDealVariantModal(false)}
-                style={{ flex: 1, padding: '0.75rem', backgroundColor: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-main)', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem' }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  addToCart(selectedDealForVariants, null, selectedDealVariants);
-                  setShowDealVariantModal(false);
-                  setSelectedDealForVariants(null);
-                  setSelectedDealVariants({});
-                }}
-                style={{ flex: 2, padding: '0.75rem', backgroundColor: 'var(--primary-yellow)', color: '#000', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '800', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-              >
-                Confirm Options
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <DealVariantSelectionModal
+        isOpen={showDealVariantModal}
+        onClose={() => setShowDealVariantModal(false)}
+        selectedDealForVariants={selectedDealForVariants}
+        selectedDealVariants={selectedDealVariants}
+        setSelectedDealVariants={setSelectedDealVariants}
+        onConfirm={() => {
+          addToCart(selectedDealForVariants, null, selectedDealVariants);
+          setShowDealVariantModal(false);
+          setSelectedDealForVariants(null);
+          setSelectedDealVariants({});
+        }}
+      />
       {/* Custom Alert/Confirm Modal */}
       {alertConfig.show && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'fadeIn 0.2s ease-out' }}>

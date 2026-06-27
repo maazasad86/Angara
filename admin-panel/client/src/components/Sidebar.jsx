@@ -10,7 +10,8 @@ import {
   ShoppingCart,
   Tag,
   TrendingUp,
-  X
+  X,
+  Wallet
 } from 'lucide-react';
 
 const Sidebar = ({ isOpen, onClose }) => {
@@ -34,6 +35,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     { name: 'Deals', path: '/deals', icon: <Tag size={20} /> },
     { name: 'Categories', path: '/categories', icon: <Grid size={20} /> },
     { name: 'Items', path: '/items', icon: <Package size={20} /> },
+    { name: 'Expenses', path: '/expenses', icon: <Wallet size={20} /> },
   ];
 
   return (

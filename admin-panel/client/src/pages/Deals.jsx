@@ -4,19 +4,14 @@ import Layout from '../components/Layout';
 import ConfirmModal from '../components/ConfirmModal';
 import { Spinner } from '../components/ui/spinner-1';
 import { 
-  Search, 
   Plus, 
-  Minus, 
   Trash2, 
-  Package, 
   Tag, 
-  ArrowLeft, 
-  Save,
   Edit2,
-  Upload,
   MoreVertical,
   X
 } from 'lucide-react';
+import DealCreator from '../components/deals/DealCreator';
 
 const Deals = () => {
   const [deals, setDeals] = useState([]);
@@ -24,28 +19,9 @@ const Deals = () => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
-  const [editingId, setEditingId] = useState(null);
+  const [editingDeal, setEditingDeal] = useState(null);
   const [activeMenuId, setActiveMenuId] = useState(null);
-
-  // Search & Filter state for item selection
-  const [activeCategory, setActiveCategory] = useState('All');
-  const [activeSubCategory, setActiveSubCategory] = useState('All');
-  const [itemSearchQuery, setItemSearchQuery] = useState('');
-
-  // Deal state
-  const [dealName, setDealName] = useState('');
-  const [dealPrice, setDealPrice] = useState('');
-  const [selectedItems, setSelectedItems] = useState([]);
-  const [dealImage, setDealImage] = useState(null);
-  const [dealImagePreview, setDealImagePreview] = useState(null);
-
-  // Confirm Modal state
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, dealId: null });
-
-  // Variant Selection State in Deal Creator
-  const [showItemVariantModal, setShowItemVariantModal] = useState(false);
-  const [selectedItemForVariant, setSelectedItemForVariant] = useState(null);
-  const [variantQuantities, setVariantQuantities] = useState({});
 
   useEffect(() => {
     fetchData();
@@ -77,42 +53,13 @@ const Deals = () => {
     }
   };
 
-  const handleDealImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setDealImage(file);
-      setDealImagePreview(URL.createObjectURL(file));
-    }
-  };
-
   const handleCreateNew = () => {
-    setDealName('');
-    setDealPrice('');
-    setSelectedItems([]);
-    setDealImage(null);
-    setDealImagePreview(null);
-    setEditingId(null);
+    setEditingDeal(null);
     setIsCreating(true);
   };
 
   const handleEdit = (deal) => {
-    setDealName(deal.name);
-    setDealPrice(deal.price);
-    setSelectedItems(deal.items.filter(i => i.item).map(i => {
-      const isVar = !!i.variant;
-      const vObj = isVar && i.item?.variants?.find(v => v.name === i.variant);
-      return {
-        ...i.item,
-        uniqueId: i.variant ? `${i.item._id}-${i.variant}` : i.item._id,
-        name: i.variant ? `${i.item.name} (${i.variant})` : i.item.name,
-        price: vObj ? vObj.price : (i.item?.price || 0),
-        chosenVariant: i.variant || null,
-        quantity: i.quantity
-      };
-    }));
-    setDealImage(null);
-    setDealImagePreview(deal.image || null);
-    setEditingId(deal._id);
+    setEditingDeal(deal);
     setIsCreating(true);
   };
 
@@ -133,91 +80,14 @@ const Deals = () => {
     }
   };
 
-  const addToDeal = (item, chosenVariant = null, customQuantity = 1) => {
-    if (item.variants && item.variants.length > 0 && !chosenVariant) {
-      setSelectedItemForVariant(item);
-      const initialQuantities = {};
-      item.variants.forEach(v => {
-        initialQuantities[v.name] = 0;
-      });
-      setVariantQuantities(initialQuantities);
-      setShowItemVariantModal(true);
-      return;
+  const handleDealSaved = (savedDeal, isEdit) => {
+    if (isEdit) {
+      setDeals(deals.map(d => d._id === savedDeal._id ? savedDeal : d));
+    } else {
+      setDeals([...deals, savedDeal]);
     }
-
-    setSelectedItems(prev => {
-      const uniqueId = chosenVariant ? `${item._id}-${chosenVariant.name}` : item._id;
-      const itemName = chosenVariant ? `${item.name} (${chosenVariant.name})` : item.name;
-      const itemPrice = chosenVariant ? chosenVariant.price : item.price;
-
-      const existing = prev.find(i => (i.uniqueId || i._id) === uniqueId);
-      if (existing) {
-        return prev.map(i => (i.uniqueId || i._id) === uniqueId ? { ...i, quantity: i.quantity + customQuantity } : i);
-      }
-      return [...prev, { 
-        ...item, 
-        uniqueId,
-        name: itemName,
-        price: itemPrice,
-        chosenVariant: chosenVariant ? chosenVariant.name : null,
-        quantity: customQuantity 
-      }];
-    });
+    setIsCreating(false);
   };
-
-  const removeFromDeal = (uniqueId) => {
-    setSelectedItems(prev => prev.filter(i => (i.uniqueId || i._id) !== uniqueId));
-  };
-
-  const updateItemQty = (uniqueId, delta) => {
-    setSelectedItems(prev => prev.map(i => {
-      if ((i.uniqueId || i._id) === uniqueId) {
-        const newQty = i.quantity + delta;
-        return newQty > 0 ? { ...i, quantity: newQty } : i;
-      }
-      return i;
-    }));
-  };
-
-  const handleSaveDeal = async () => {
-    if (!dealName || !dealPrice || selectedItems.length === 0) {
-      alert('Please fill all fields and add at least one item');
-      return;
-    }
-
-    const data = new FormData();
-    data.append('name', dealName);
-    data.append('price', dealPrice);
-    data.append('items', JSON.stringify(selectedItems.map(i => ({
-      item: i._id,
-      quantity: i.quantity,
-      variant: i.chosenVariant
-    }))));
-    if (dealImage) {
-      data.append('image', dealImage);
-    }
-
-    try {
-      if (editingId) {
-        const res = await axios.put(`http://${window.location.hostname}:5000/api/deals/${editingId}`, data);
-        setDeals(deals.map(d => d._id === editingId ? res.data : d));
-      } else {
-        const res = await axios.post(`http://${window.location.hostname}:5000/api/deals`, data);
-        setDeals([...deals, res.data]);
-      }
-      setIsCreating(false);
-    } catch (err) {
-      console.error(err);
-      alert('Failed to save deal');
-    }
-  };
-
-  const filteredItems = items.filter(item => {
-    const matchesCategory = activeCategory === 'All' || item.category?.name === activeCategory;
-    const matchesSubCategory = activeSubCategory === 'All' || item.subCategory === activeSubCategory;
-    const matchesSearch = item.name.toLowerCase().includes(itemSearchQuery.toLowerCase());
-    return matchesCategory && matchesSubCategory && matchesSearch;
-  });
 
   if (loading) return <Layout><div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '4rem', width: '100%' }}><Spinner size={40} color="var(--primary-yellow)" /></div></Layout>;
 
@@ -315,351 +185,13 @@ const Deals = () => {
           )}
         </div>
       ) : (
-        <div className="responsive-flex" style={styles.creatorContainer}>
-          {/* Item Selector Side */}
-          <div style={styles.itemsSide}>
-            <div style={styles.selectorHeader}>
-              <div style={styles.searchBox}>
-                <Search size={18} style={styles.searchIcon} />
-                <input 
-                  type="text" 
-                  placeholder="Find items..." 
-                  style={styles.searchInput}
-                  value={itemSearchQuery}
-                  onChange={(e) => setItemSearchQuery(e.target.value)}
-                />
-              </div>
-
-              <div style={styles.categoryTabs}>
-                <button 
-                  onClick={() => { setActiveCategory('All'); setActiveSubCategory('All'); }}
-                  style={{
-                    ...styles.tab,
-                    backgroundColor: activeCategory === 'All' ? 'var(--primary-yellow)' : 'var(--glass)',
-                    color: activeCategory === 'All' ? '#000' : 'var(--text-main)',
-                  }}
-                >
-                  All
-                </button>
-                {categories.map(cat => (
-                  <button 
-                    key={cat._id}
-                    onClick={() => { setActiveCategory(cat.name); setActiveSubCategory('All'); }}
-                    style={{
-                      ...styles.tab,
-                      backgroundColor: activeCategory === cat.name ? 'var(--primary-yellow)' : 'var(--glass)',
-                      color: activeCategory === cat.name ? '#000' : 'var(--text-main)',
-                    }}
-                  >
-                    {cat.name}
-                  </button>
-                ))}
-              </div>
-
-              {activeCategory !== 'All' && (
-                (() => {
-                  const currentCat = categories.find(cat => cat.name === activeCategory);
-                  const subCats = currentCat?.subCategories || [];
-                  if (subCats.length === 0) return null;
-                  return (
-                    <div style={styles.subCategoryTabs}>
-                      <button
-                        onClick={() => setActiveSubCategory('All')}
-                        style={{
-                          ...styles.subTab,
-                          backgroundColor: activeSubCategory === 'All' ? 'var(--primary-yellow)' : 'var(--glass)',
-                          color: activeSubCategory === 'All' ? '#000' : 'var(--text-main)',
-                          border: '1px solid var(--glass-border)',
-                        }}
-                      >
-                        All Option
-                      </button>
-                      {subCats.map((sub, i) => (
-                        <button
-                          key={i}
-                          onClick={() => setActiveSubCategory(sub)}
-                          style={{
-                            ...styles.subTab,
-                            backgroundColor: activeSubCategory === sub ? 'var(--primary-yellow)' : 'var(--glass)',
-                            color: activeSubCategory === sub ? '#000' : 'var(--text-main)',
-                            border: '1px solid var(--glass-border)',
-                          }}
-                        >
-                          {sub.includes(' / ') ? sub.replace(' / ', ' ➔ ') : sub}
-                        </button>
-                      ))}
-                    </div>
-                  );
-                })()
-              )}
-            </div>
-
-            <div className="items-grid" style={styles.itemsGridSmall}>
-              {filteredItems.map(item => (
-                <div 
-                  key={item._id} 
-                  className="glass-card" 
-                  style={styles.itemCard}
-                  onClick={() => addToDeal(item)}
-                >
-                  <div style={styles.itemImageContainer}>
-                    {item.image ? (
-                      <img src={item.image} alt={item.name} style={styles.itemImage} />
-                    ) : (
-                      <div style={styles.dealPlaceholder}>
-                        <Tag size={40} style={{ color: 'var(--primary-yellow)' }} />
-                      </div>
-                    )}
-                    <div style={styles.priceBadge}>Rs. {item.price}</div>
-                  </div>
-                  <div style={styles.cardInfo}>
-                    <h4 style={styles.itemName}>{item.name}</h4>
-                    <div style={styles.addBtn}>
-                      <Plus size={16} />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Deal Config Side */}
-          <div className="glass-card fixed-side-panel" style={styles.configSide}>
-            <div style={styles.configHeader}>
-              <h3 style={{ fontWeight: '800' }}>{editingId ? 'Edit Deal' : 'New Deal Setup'}</h3>
-              <Tag size={20} style={{ opacity: 0.5 }} />
-            </div>
-
-            {/* Name and Price Row */}
-            <div style={{ display: 'flex', gap: '1rem', width: '100%' }}>
-              <div style={{ ...styles.inputGroup, flex: 2 }}>
-                <label style={styles.label}>Deal Name / Number</label>
-                <input 
-                  type="text" 
-                  placeholder="e.g. Super Saver Deal 1" 
-                  style={styles.majorInput}
-                  value={dealName}
-                  onChange={(e) => setDealName(e.target.value)}
-                />
-              </div>
-              <div style={{ ...styles.inputGroup, flex: 1 }}>
-                <label style={styles.label}>Price (Rs.)</label>
-                <input 
-                  type="number" 
-                  placeholder="0.00" 
-                  style={styles.majorInput}
-                  value={dealPrice}
-                  onChange={(e) => setDealPrice(e.target.value)}
-                />
-              </div>
-            </div>
-
-            {/* Image upload row */}
-            <div style={styles.inputGroup}>
-              <label style={styles.label}>Deal Image</label>
-              <div style={styles.dealUploadArea} onClick={(e) => {
-                if(e.target.closest('button')) return;
-                document.getElementById('dealImageInput').click();
-              }}>
-                {dealImagePreview ? (
-                  <>
-                    <img src={dealImagePreview} alt="Deal Preview" style={styles.dealPreviewImg} />
-                    <button 
-                      type="button"
-                      onClick={(e) => { 
-                        e.stopPropagation(); 
-                        setDealImage(null); 
-                        setDealImagePreview(null); 
-                      }} 
-                      style={styles.removeImageBtn}
-                    >
-                      <X size={14} />
-                    </button>
-                  </>
-                ) : (
-                  <div style={styles.dealUploadPrompt}>
-                    <Upload size={20} />
-                    <span>Upload Deal Image</span>
-                  </div>
-                )}
-                <input 
-                  id="dealImageInput" 
-                  type="file" 
-                  onChange={handleDealImageChange} 
-                  hidden 
-                  accept="image/*"
-                />
-              </div>
-            </div>
-
-            {/* Selected Items section */}
-            <div style={styles.selectedItemsSection}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <label style={styles.label}>Selected Items ({selectedItems.length})</label>
-                {selectedItems.length > 0 && (
-                  <span style={{ fontSize: '0.85rem', color: 'var(--primary-yellow)', fontWeight: '800' }}>
-                    Total: Rs. {selectedItems.reduce((acc, item) => acc + (item.price * item.quantity), 0)}
-                  </span>
-                )}
-              </div>
-              <div style={styles.selectedItemsScroll}>
-                {selectedItems.length > 0 ? (
-                  selectedItems.map(item => {
-                    const identifier = item.uniqueId || item._id;
-                    return (
-                      <div key={identifier} style={styles.selectedItem}>
-                        <div style={styles.selectedItemLeft}>
-                          {item.image && (
-                            <img src={item.image} alt={item.name} style={styles.selectedItemThumb} />
-                          )}
-                          <div style={styles.selInfo}>
-                            <p style={styles.selName}>{item.name}</p>
-                            <p style={styles.selMeta}>
-                              Rs. {item.price} &times; {item.quantity} = <span style={{color:'var(--primary-yellow)', fontWeight:'700'}}>Rs. {item.price * item.quantity}</span>
-                            </p>
-                          </div>
-                        </div>
-                        <div style={styles.qtyRow}>
-                          <button onClick={() => updateItemQty(identifier, -1)} style={styles.miniQtyBtn}><Minus size={12} /></button>
-                          <span>{item.quantity}</span>
-                          <button onClick={() => updateItemQty(identifier, 1)} style={styles.miniQtyBtn}><Plus size={12} /></button>
-                          <button onClick={() => removeFromDeal(identifier)} style={styles.selRemove}><Trash2 size={16} /></button>
-                        </div>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <div style={styles.emptyPrompt}>
-                    <Package size={32} style={{ opacity: 0.1, marginBottom: '0.5rem' }} />
-                    <p>Select items from the left to build the deal</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div style={styles.saveBtnContainer}>
-              <button 
-                onClick={() => setIsCreating(false)} 
-                className="btn-secondary" 
-                style={{...styles.saveBtnWide, borderRadius: '12px', backgroundColor: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-main)'}}
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={handleSaveDeal} 
-                className="btn-primary" 
-                style={styles.saveBtnWide}
-                disabled={!dealName || !dealPrice || selectedItems.length === 0}
-              >
-                <Save size={20} /> {editingId ? 'Update Deal' : 'Save Deal'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Item Variant Selection Modal in Deal Creator */}
-      {showItemVariantModal && selectedItemForVariant && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div className="glass-card" style={{ width: '380px', padding: '1.75rem', backgroundColor: 'var(--bg-card)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', color: 'var(--text-main)' }}>
-              <h3 style={{ fontSize: '1.2rem', fontWeight: '800', margin: 0 }}>Select Variant</h3>
-              <button onClick={() => setShowItemVariantModal(false)} style={{ backgroundColor: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={20} /></button>
-            </div>
-            
-            <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
-              Choose quantities for <strong style={{ color: 'var(--text-main)' }}>{selectedItemForVariant.name}</strong> options:
-            </p>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
-              {selectedItemForVariant.variants.map((v, idx) => {
-                const qty = variantQuantities[v.name] || 0;
-                return (
-                  <div 
-                    key={idx} 
-                    style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'space-between', 
-                      padding: '0.75rem 1rem', 
-                      borderRadius: '10px', 
-                      border: '1px solid', 
-                      borderColor: qty > 0 ? 'var(--primary-yellow)' : 'var(--glass-border)',
-                      backgroundColor: qty > 0 ? 'rgba(250, 204, 21, 0.05)' : 'rgba(255, 255, 255, 0.01)',
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                      <span style={{ fontSize: '0.9rem', fontWeight: '600', color: 'var(--text-main)' }}>{v.name}</span>
-                      <span style={{ fontSize: '0.8rem', color: 'var(--primary-yellow)', fontWeight: '700' }}>Rs. {v.price}</span>
-                    </div>
-                    
-                    {/* Quantity Selector */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <button 
-                        type="button"
-                        onClick={() => {
-                          setVariantQuantities(prev => ({
-                            ...prev,
-                            [v.name]: Math.max(0, qty - 1)
-                          }));
-                        }}
-                        style={{ width: '28px', height: '28px', borderRadius: '8px', backgroundColor: 'var(--glass)', border: '1px solid var(--glass-border)', color: 'var(--text-main)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
-                      >
-                        <Minus size={14} />
-                      </button>
-                      <span style={{ fontSize: '0.95rem', fontWeight: '700', color: qty > 0 ? 'var(--text-main)' : 'var(--text-muted)', minWidth: '20px', textAlign: 'center' }}>
-                        {qty}
-                      </span>
-                      <button 
-                        type="button"
-                        onClick={() => {
-                          setVariantQuantities(prev => ({
-                            ...prev,
-                            [v.name]: qty + 1
-                          }));
-                        }}
-                        style={{ width: '28px', height: '28px', borderRadius: '8px', backgroundColor: 'var(--glass)', border: '1px solid var(--glass-border)', color: 'var(--text-main)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
-                      >
-                        <Plus size={14} />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div style={{ display: 'flex', gap: '0.8rem' }}>
-              <button 
-                onClick={() => setShowItemVariantModal(false)} 
-                style={{ flex: 1, padding: '0.75rem', backgroundColor: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-main)', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem' }}
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={() => {
-                  let addedAny = false;
-                  selectedItemForVariant.variants.forEach(v => {
-                    const qty = variantQuantities[v.name] || 0;
-                    if (qty > 0) {
-                      addToDeal(selectedItemForVariant, v, qty);
-                      addedAny = true;
-                    }
-                  });
-                  if (addedAny) {
-                    setShowItemVariantModal(false);
-                    setSelectedItemForVariant(null);
-                    setVariantQuantities({});
-                  }
-                }} 
-                style={{ flex: 2, padding: '0.75rem', backgroundColor: 'var(--primary-yellow)', color: '#000', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '800', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                disabled={!Object.values(variantQuantities).some(q => q > 0)}
-              >
-                Add to Deal
-              </button>
-            </div>
-          </div>
-        </div>
+        <DealCreator 
+          items={items}
+          categories={categories}
+          initialData={editingDeal}
+          onSave={handleDealSaved}
+          onCancel={() => setIsCreating(false)}
+        />
       )}
 
       <ConfirmModal 

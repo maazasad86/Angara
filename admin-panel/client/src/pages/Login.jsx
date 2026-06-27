@@ -84,7 +84,7 @@ const Login = () => {
         </form>
 
         <div style={styles.footer}>
-          <p>Protected by Antigravity OS</p>
+          <p>Developed by EliteDevAgency</p>
         </div>
       </div>
     </div>

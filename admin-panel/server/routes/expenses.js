@@ -33,4 +33,31 @@ router.post('/', async (req, res) => {
     }
 });
 
+// Update an expense
+router.put('/:id', async (req, res) => {
+    try {
+        const { amount, description } = req.body;
+        const updatedExpense = await Expense.findByIdAndUpdate(
+            req.params.id,
+            { amount: Number(amount), description },
+            { new: true }
+        );
+        if (!updatedExpense) return res.status(404).json({ message: 'Expense not found' });
+        res.json(updatedExpense);
+    } catch (err) {
+        res.status(400).json({ message: err.message });
+    }
+});
+
+// Delete an expense
+router.delete('/:id', async (req, res) => {
+    try {
+        const deletedExpense = await Expense.findByIdAndDelete(req.params.id);
+        if (!deletedExpense) return res.status(404).json({ message: 'Expense not found' });
+        res.json({ message: 'Expense deleted successfully' });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
 module.exports = router;

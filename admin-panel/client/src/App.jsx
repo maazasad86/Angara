@@ -7,6 +7,7 @@ import Items from './pages/Items';
 import POS from './pages/POS';
 import Deals from './pages/Deals';
 import Sales from './pages/Sales';
+import Expenses from './pages/Expenses';
 import { Agentation } from 'agentation';
 // Simple Protected Route
 const ProtectedRoute = ({ children }) => {
@@ -73,6 +74,14 @@ function App() {
           element={
             <ProtectedRoute>
               <Sales />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/expenses" 
+          element={
+            <ProtectedRoute>
+              <Expenses />
             </ProtectedRoute>
           } 
         />
