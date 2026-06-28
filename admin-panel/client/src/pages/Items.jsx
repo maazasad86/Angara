@@ -541,6 +541,7 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     gap: '2.5rem',
+    minHeight: '65vh',
   },
   subCatSection: {
     display: 'flex',
