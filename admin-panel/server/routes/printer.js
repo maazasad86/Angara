@@ -144,38 +144,25 @@ router.post('/', async (req, res) => {
             printer.setTextDoubleHeight();
             printer.bold(true);
             items.forEach(item => {
-                if (item.items !== undefined) {
-                    // It's a Deal
-                    let printedFromDescription = false;
-                    
-                    if (item.description) {
-                        // The user wrote the full deal contents in the description
-                        // Since we can't reliably multiply text like "1.5 Litre", we show a multiplier header if quantity > 1
-                        if (item.quantity > 1) {
-                            printer.println(`[ ${item.quantity}x DEAL MULTIPLIER ]`);
-                        }
+                if (item.items !== undefined && item.items.length > 0) {
+                    // It's a Deal - print its included items only
+                    item.items.forEach(di => {
+                        const subItemName = (di.item && di.item.name) ? di.item.name : 'Item';
+                        const variantStr = (di.variant || di.chosenVariant) ? ` (${di.variant || di.chosenVariant})` : '';
+                        const totalQty = di.quantity * item.quantity;
                         
-                        const parts = item.description.split(',');
-                        parts.forEach(part => {
-                            if (part.trim()) {
-                                // If quantity is 1, just print the part. If > 1, the multiplier header explains it.
-                                printer.println(` -> ${part.trim()}`);
-                            }
-                        });
-                        printedFromDescription = true;
-                    } 
+                        printer.println(`[ ${totalQty} ] x ${subItemName}${variantStr}`);
+                    });
                     
-                    // Fallback: If no description, try to print from the linked items array
-                    if (!printedFromDescription && item.items && item.items.length > 0) {
-                        item.items.forEach(di => {
-                            const subItemName = (di.item && di.item.name) ? di.item.name : 'Item';
-                            const variantStr = (di.variant || di.chosenVariant) ? ` (${di.variant || di.chosenVariant})` : '';
-                            const totalQty = di.quantity * item.quantity;
-                            
-                            printer.println(`[ ${totalQty} ] x ${subItemName}${variantStr}`);
-                        });
+                    if (item.notes) {
+                        printer.setTextNormal();
+                        printer.println(`  -> Note: ${item.notes}`);
+                        printer.setTextDoubleHeight();
+                        printer.bold(true);
                     }
-                    
+                } else if (item.items !== undefined && item.items.length === 0) {
+                    // Deal with no included items, just print the name as fallback
+                    printer.println(`[ ${item.quantity} ] x ${item.name}`);
                     if (item.notes) {
                         printer.setTextNormal();
                         printer.println(`  -> Note: ${item.notes}`);
