@@ -291,13 +291,13 @@ const Items = () => {
                           </button>
                           {showDropdown === item._id && (
                             <div style={styles.dropdownMenu}>
-                              <button onClick={() => { handleEdit(item); setShowDropdown(null); }} style={styles.dropdownItem}>
+                              <button onClick={(e) => { e.stopPropagation(); handleEdit(item); setShowDropdown(null); }} style={styles.dropdownItem}>
                                 <Edit2 size={14} style={{ marginRight: '0.4rem' }} /> Edit
                               </button>
-                              <button onClick={() => { handleToggleAvailability(item._id); setShowDropdown(null); }} style={styles.dropdownItem}>
+                              <button onClick={(e) => { e.stopPropagation(); handleToggleAvailability(item._id); setShowDropdown(null); }} style={styles.dropdownItem}>
                                 <Power size={14} style={{ marginRight: '0.4rem' }} /> {isAvail ? 'Mark Out of Stock' : 'Mark Available'}
                               </button>
-                              <button onClick={() => { confirmDelete(item._id); setShowDropdown(null); }} style={{ ...styles.dropdownItem, color: 'var(--accent-red)' }}>
+                              <button onClick={(e) => { e.stopPropagation(); confirmDelete(item._id); setShowDropdown(null); }} style={{ ...styles.dropdownItem, color: 'var(--accent-red)' }}>
                                 <Trash2 size={14} style={{ marginRight: '0.4rem' }} /> Delete
                               </button>
                             </div>
