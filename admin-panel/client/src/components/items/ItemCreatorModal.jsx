@@ -219,7 +219,7 @@ const ItemCreatorModal = ({ isOpen, onClose, itemToEdit, categories, refreshData
               </div>
 
               <div style={styles.formRight}>
-                <label style={styles.label}>Item Image</label>
+                <label style={styles.label}>Item Image <span style={{fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 'normal'}}>(Optional)</span></label>
                 <div style={styles.uploadArea} onClick={() => document.getElementById('imageInput').click()}>
                   {isCompressing ? (
                      <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px'}}>
