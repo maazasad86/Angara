@@ -372,7 +372,7 @@ const Items = () => {
         <div style={styles.paginationContainer}>
           <button 
             disabled={currentPage === 1} 
-            onClick={() => fetchData(currentPage - 1, searchQuery)}
+            onClick={() => setCurrentPage(currentPage - 1)}
             className="btn-secondary"
           >
             Previous
@@ -380,7 +380,7 @@ const Items = () => {
           <span style={{color: 'var(--text-main)', fontSize: '0.9rem'}}>Page {currentPage} of {totalPages}</span>
           <button 
             disabled={currentPage === totalPages} 
-            onClick={() => fetchData(currentPage + 1, searchQuery)}
+            onClick={() => setCurrentPage(currentPage + 1)}
             className="btn-secondary"
           >
             Next
