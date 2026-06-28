@@ -9,6 +9,7 @@ const ItemCreatorModal = ({ isOpen, onClose, itemToEdit, categories, refreshData
     name: '',
     category: '',
     subCategory: '',
+    kitchenType: 'Fast Food',
     priceType: 'single',
     price: '',
     variants: [],
@@ -27,6 +28,7 @@ const ItemCreatorModal = ({ isOpen, onClose, itemToEdit, categories, refreshData
           name: itemToEdit.name,
           category: itemToEdit.category?._id || '',
           subCategory: itemToEdit.subCategory || '',
+          kitchenType: itemToEdit.kitchenType || 'Fast Food',
           priceType: itemToEdit.priceType || 'single',
           price: itemToEdit.price || '',
           variants: itemToEdit.variants || [],
@@ -38,7 +40,7 @@ const ItemCreatorModal = ({ isOpen, onClose, itemToEdit, categories, refreshData
         setImagePreview(itemToEdit.image);
       } else {
         setFormData({ 
-          name: '', category: '', subCategory: '', priceType: 'single', 
+          name: '', category: '', subCategory: '', kitchenType: 'Fast Food', priceType: 'single', 
           price: '', variants: [], spiceLevel: false, addons: [], image: null, isAvailable: true 
         });
         setImagePreview(null);
@@ -110,6 +112,7 @@ const ItemCreatorModal = ({ isOpen, onClose, itemToEdit, categories, refreshData
     data.append('name', formData.name);
     data.append('category', formData.category);
     data.append('subCategory', formData.subCategory);
+    data.append('kitchenType', formData.kitchenType);
     data.append('priceType', formData.priceType);
     data.append('price', formData.price);
     data.append('spiceLevel', formData.spiceLevel);
@@ -167,6 +170,21 @@ const ItemCreatorModal = ({ isOpen, onClose, itemToEdit, categories, refreshData
                     style={styles.input}
                     required 
                   />
+                </div>
+
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Kitchen Section</label>
+                  <select 
+                    name="kitchenType" 
+                    value={formData.kitchenType} 
+                    onChange={handleInputChange} 
+                    style={styles.input}
+                    required
+                  >
+                    <option value="Fast Food">Fast Food</option>
+                    <option value="BBQ">BBQ / Desi</option>
+                    <option value="Drinks/Extras">Drinks / Extras</option>
+                  </select>
                 </div>
 
                 <div style={styles.formGroup}>

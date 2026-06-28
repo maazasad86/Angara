@@ -236,19 +236,25 @@ const POS = () => {
     // Check if this is an add-on KOT
     const isAddon = cart.some(item => item.isPrinted);
 
-    const isBbqOrRoll = (i) => {
-      const cat = i.category?.name?.toLowerCase() || '';
-      return cat.includes('desi') || cat.includes('bbq') || cat.includes('roll') || cat.includes('kebab') || cat.includes('boti');
-    };
+    let bbqItems = unprintedItems.filter(i => i.kitchenType === 'BBQ');
+    let fastFoodItems = unprintedItems.filter(i => i.kitchenType === 'Fast Food' || !i.kitchenType);
+    let drinkItems = unprintedItems.filter(i => i.kitchenType === 'Drinks/Extras');
 
-    const desiItems = unprintedItems.filter(isBbqOrRoll);
-    const fastFoodItems = unprintedItems.filter(i => !isBbqOrRoll(i) && !i.category?.name?.toLowerCase().includes('drink'));
+    // Routing drinks based on order composition
+    if (fastFoodItems.length > 0) {
+      fastFoodItems = [...fastFoodItems, ...drinkItems];
+    } else if (bbqItems.length > 0) {
+      bbqItems = [...bbqItems, ...drinkItems];
+    } else if (drinkItems.length > 0) {
+      // If ONLY drinks are ordered, default to fast food slip
+      fastFoodItems = [...drinkItems];
+    }
 
     try {
-      if (desiItems.length > 0) {
+      if (bbqItems.length > 0) {
         await axios.post(`http://${(window.location.hostname || 'localhost')}:5000/api/print`, {
           type: 'KOT_DESI',
-          items: desiItems,
+          items: bbqItems,
           orderType,
           isAddon
         });

@@ -13,6 +13,11 @@ const ItemSchema = new mongoose.Schema({
     subCategory: {
         type: String
     },
+    kitchenType: {
+        type: String,
+        enum: ['Fast Food', 'BBQ', 'Drinks/Extras'],
+        default: 'Fast Food'
+    },
     priceType: {
         type: String,
         enum: ['single', 'variants'],
