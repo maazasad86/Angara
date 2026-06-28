@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Layout from '../components/Layout';
 import { Spinner } from '../components/ui/spinner-1';
+import fastFoodPlaceholder from '../assets/fastfood_placeholder.png';
+import bbqPlaceholder from '../assets/bbq_placeholder.png';
+import drinksPlaceholder from '../assets/drinks_placeholder.png';
 import { Package, Tags, Gift, Activity } from 'lucide-react';
 import { useData } from '../context/DataContext';
 
@@ -151,7 +154,7 @@ const Dashboard = () => {
                           <tr key={item._id} style={styles.tr}>
                             <td style={styles.td}>
                               <img
-                                src={item.image || (item.kitchenType === 'BBQ' ? '/assets/bbq_placeholder.png' : item.kitchenType === 'Drinks/Extras' ? '/assets/drinks_placeholder.png' : '/assets/fastfood_placeholder.png')}
+                                src={item.image || (item.kitchenType === 'BBQ' ? bbqPlaceholder : item.kitchenType === 'Drinks/Extras' ? drinksPlaceholder : fastFoodPlaceholder)}
                                 alt={item.name}
                                 style={{ width: '40px', height: '40px', borderRadius: '8px', objectFit: 'cover' }}
                               />

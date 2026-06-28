@@ -6,6 +6,9 @@ import ConfirmModal from '../components/ConfirmModal';
 import { Spinner } from '../components/ui/spinner-1';
 import { Plus, Edit2, Trash2, X, Upload, Package, MoreVertical, PlusCircle, Search, Save, Power, Tag, Layers, Flame } from 'lucide-react';
 import { useData } from '../context/DataContext';
+import fastFoodPlaceholder from '../assets/fastfood_placeholder.png';
+import bbqPlaceholder from '../assets/bbq_placeholder.png';
+import drinksPlaceholder from '../assets/drinks_placeholder.png';
 
 const Items = () => {
   const { items: globalItems, categories, isDataLoading, refreshData } = useData();
@@ -307,7 +310,7 @@ const Items = () => {
 
                         <div style={styles.imageContainer}>
                           <img 
-                            src={item.image || (item.kitchenType === 'BBQ' ? '/assets/bbq_placeholder.png' : item.kitchenType === 'Drinks/Extras' ? '/assets/drinks_placeholder.png' : '/assets/fastfood_placeholder.png')} 
+                            src={item.image || (item.kitchenType === 'BBQ' ? bbqPlaceholder : item.kitchenType === 'Drinks/Extras' ? drinksPlaceholder : fastFoodPlaceholder)} 
                             alt={item.name} 
                             style={styles.itemImage} 
                           />

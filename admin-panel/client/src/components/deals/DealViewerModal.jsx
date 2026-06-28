@@ -1,5 +1,8 @@
 import React from 'react';
-import { X, Tag, Package } from 'lucide-react';
+import { X, Package, Tag } from 'lucide-react';
+import fastFoodPlaceholder from '../../assets/fastfood_placeholder.png';
+import bbqPlaceholder from '../../assets/bbq_placeholder.png';
+import drinksPlaceholder from '../../assets/drinks_placeholder.png';
 
 const DealViewerModal = ({ isOpen, onClose, deal }) => {
   if (!isOpen || !deal) return null;
@@ -47,7 +50,7 @@ const DealViewerModal = ({ isOpen, onClose, deal }) => {
                     )}
                   </div>
                   <img 
-                    src={di.item?.image || (di.item?.kitchenType === 'BBQ' ? '/assets/bbq_placeholder.png' : di.item?.kitchenType === 'Drinks/Extras' ? '/assets/drinks_placeholder.png' : '/assets/fastfood_placeholder.png')} 
+                    src={di.item?.image || (di.item?.kitchenType === 'BBQ' ? bbqPlaceholder : di.item?.kitchenType === 'Drinks/Extras' ? drinksPlaceholder : fastFoodPlaceholder)} 
                     alt="item" 
                     style={styles.miniItemImage} 
                   />
