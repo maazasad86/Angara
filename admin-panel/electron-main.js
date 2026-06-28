@@ -87,3 +87,17 @@ autoUpdater.on('update-downloaded', () => {
     }
   });
 });
+
+autoUpdater.on('error', (err) => {
+  dialog.showErrorBox('Update Error', err == null ? "Unknown error" : (err.stack || err).toString());
+});
+
+autoUpdater.on('download-progress', (progressObj) => {
+  let log_message = "Download speed: " + (progressObj.bytesPerSecond / 1024 / 1024).toFixed(2) + " MB/s";
+  log_message = log_message + ' - Downloaded ' + progressObj.percent.toFixed(2) + '%';
+  log_message = log_message + ' (' + (progressObj.transferred / 1024 / 1024).toFixed(2) + " MB / " + (progressObj.total / 1024 / 1024).toFixed(2) + " MB)";
+  
+  // Optionally, we could send this to the renderer window to show a progress bar.
+  // For now, logging it in the terminal.
+  console.log(log_message);
+});

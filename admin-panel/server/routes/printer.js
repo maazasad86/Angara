@@ -144,12 +144,30 @@ router.post('/', async (req, res) => {
             printer.setTextDoubleHeight();
             printer.bold(true);
             items.forEach(item => {
-                printer.println(`[ ${item.quantity} ] x ${item.name}`);
-                if (item.notes) {
-                    printer.setTextNormal();
-                    printer.println(`  -> Note: ${item.notes}`);
-                    printer.setTextDoubleHeight();
-                    printer.bold(true);
+                if (item.items && item.items.length > 0) {
+                    // It's a Deal - print its products instead
+                    item.items.forEach(di => {
+                        const subItemName = (di.item && di.item.name) ? di.item.name : 'Item';
+                        const variantStr = (di.variant || di.chosenVariant) ? ` (${di.variant || di.chosenVariant})` : '';
+                        const totalQty = di.quantity * item.quantity;
+                        
+                        printer.println(`[ ${totalQty} ] x ${subItemName}${variantStr}`);
+                        if (item.notes) {
+                            printer.setTextNormal();
+                            printer.println(`  -> Note: ${item.notes}`);
+                            printer.setTextDoubleHeight();
+                            printer.bold(true);
+                        }
+                    });
+                } else {
+                    // Regular item
+                    printer.println(`[ ${item.quantity} ] x ${item.name}`);
+                    if (item.notes) {
+                        printer.setTextNormal();
+                        printer.println(`  -> Note: ${item.notes}`);
+                        printer.setTextDoubleHeight();
+                        printer.bold(true);
+                    }
                 }
             });
             printer.setTextNormal();
@@ -162,18 +180,13 @@ router.post('/', async (req, res) => {
         
         // Execute print
         try {
-            if (isConnected) {
-                await printer.execute();
-                console.log("Print executed successfully.");
-                res.json({ message: 'Printed successfully', type });
-            } else {
-                console.warn("Skipping print execution because printer is not connected.");
-                res.json({ message: 'Simulated print (Printer offline)', type });
-            }
+            await printer.execute();
+            console.log("Print executed successfully.");
+            res.json({ message: 'Printed successfully', type });
         } catch (printErr) {
             console.error("Print Execute Error:", printErr);
             // Return 200 instead of 500 so it doesn't fail the order flow
-            res.json({ message: 'Error executing print command, but operation continued', error: printErr.message, type });
+            res.json({ message: 'Simulated print (Printer offline or error)', error: printErr.message, type });
         }
     } catch (err) {
         console.error('PRINTER ROUTE ERROR:', err);
