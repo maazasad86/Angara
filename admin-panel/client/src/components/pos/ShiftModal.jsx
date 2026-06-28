@@ -27,7 +27,7 @@ const ShiftModal = ({
 
   return (
     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'fadeIn 0.2s ease-out' }}>
-      <div className="glass-card" style={{ width: '380px', padding: '1.5rem', animation: 'scaleIn 0.2s ease-out' }}>
+      <div className="modal-card" style={{ width: '380px', padding: '1.5rem', animation: 'scaleIn 0.2s ease-out' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <h2 style={{ color: '#ef4444', fontSize: '1.2rem', fontWeight: '800', margin: 0 }}>Close Shift (Z-Report)</h2>
           <button onClick={onClose} style={{ backgroundColor: 'transparent', border: 'none', color: 'var(--text-main)', cursor: 'pointer', padding: 0 }}>

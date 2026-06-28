@@ -7,7 +7,7 @@ const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message }) => {
 
   return createPortal(
     <div style={styles.modalOverlay}>
-      <div className="glass-card" style={styles.modal}>
+      <div className="modal-card" style={styles.modal}>
         <div style={styles.modalHeader}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <AlertTriangle color="var(--primary-yellow)" size={24} />

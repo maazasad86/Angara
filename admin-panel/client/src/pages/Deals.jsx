@@ -9,9 +9,11 @@ import {
   Tag, 
   Edit2,
   MoreVertical,
-  X
+  X,
+  Eye
 } from 'lucide-react';
 import DealCreator from '../components/deals/DealCreator';
+import DealViewerModal from '../components/deals/DealViewerModal';
 import { useData } from '../context/DataContext';
 
 const Deals = () => {
@@ -20,6 +22,8 @@ const Deals = () => {
   const [editingDeal, setEditingDeal] = useState(null);
   const [activeMenuId, setActiveMenuId] = useState(null);
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, dealId: null });
+  const [viewingDeal, setViewingDeal] = useState(null);
+  const [isViewingModalOpen, setIsViewingModalOpen] = useState(false);
 
   useEffect(() => {
     const closeMenus = () => setActiveMenuId(null);
@@ -40,6 +44,12 @@ const Deals = () => {
   const handleEdit = (deal) => {
     setEditingDeal(deal);
     setIsCreating(true);
+  };
+
+  const handleView = (deal) => {
+    setViewingDeal(deal);
+    setIsViewingModalOpen(true);
+    setActiveMenuId(null);
   };
 
   const confirmDelete = (id) => {
@@ -100,6 +110,12 @@ const Deals = () => {
                   
                   {activeMenuId === deal._id && (
                     <div style={styles.dropdownMenu}>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); handleView(deal); }} 
+                        style={styles.dropdownItem}
+                      >
+                        <Eye size={13} style={{ marginRight: '0.4rem' }} /> View
+                      </button>
                       <button 
                         onClick={(e) => { e.stopPropagation(); handleEdit(deal); }} 
                         style={styles.dropdownItem}
@@ -168,6 +184,12 @@ const Deals = () => {
           onCancel={() => setIsCreating(false)}
         />
       )}
+
+      <DealViewerModal 
+        isOpen={isViewingModalOpen} 
+        onClose={() => setIsViewingModalOpen(false)} 
+        deal={viewingDeal} 
+      />
 
       <ConfirmModal 
         isOpen={confirmModal.isOpen}

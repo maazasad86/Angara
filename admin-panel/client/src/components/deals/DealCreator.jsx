@@ -244,66 +244,6 @@ const DealCreator = ({ items, categories, initialData, onSave, onCancel }) => {
           <Tag size={20} style={{ opacity: 0.5 }} />
         </div>
 
-        <div style={{ display: 'flex', gap: '1rem', width: '100%' }}>
-          <div style={{ ...styles.inputGroup, flex: 2 }}>
-            <label style={styles.label}>Deal Name / Number</label>
-            <input 
-              type="text" 
-              placeholder="e.g. Super Saver Deal 1" 
-              style={styles.majorInput}
-              value={dealName}
-              onChange={(e) => setDealName(e.target.value)}
-            />
-          </div>
-          <div style={{ ...styles.inputGroup, flex: 1 }}>
-            <label style={styles.label}>Price (Rs.)</label>
-            <input 
-              type="number" 
-              placeholder="0.00" 
-              style={styles.majorInput}
-              value={dealPrice}
-              onChange={(e) => setDealPrice(e.target.value)}
-            />
-          </div>
-        </div>
-
-        <div style={styles.inputGroup}>
-          <label style={styles.label}>Deal Image</label>
-          <div style={styles.dealUploadArea} onClick={(e) => {
-            if(e.target.closest('button')) return;
-            document.getElementById('dealImageInput').click();
-          }}>
-            {dealImagePreview ? (
-              <>
-                <img src={dealImagePreview} alt="Deal Preview" style={styles.dealPreviewImg} />
-                <button 
-                  type="button"
-                  onClick={(e) => { 
-                    e.stopPropagation(); 
-                    setDealImage(null); 
-                    setDealImagePreview(null); 
-                  }} 
-                  style={styles.removeImageBtn}
-                >
-                  <X size={14} />
-                </button>
-              </>
-            ) : (
-              <div style={styles.dealUploadPrompt}>
-                <Upload size={20} />
-                <span>Upload Deal Image</span>
-              </div>
-            )}
-            <input 
-              id="dealImageInput" 
-              type="file" 
-              onChange={handleDealImageChange} 
-              hidden 
-              accept="image/*"
-            />
-          </div>
-        </div>
-
         <div style={styles.selectedItemsSection}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <label style={styles.label}>Selected Items ({selectedItems.length})</label>
@@ -348,6 +288,66 @@ const DealCreator = ({ items, categories, initialData, onSave, onCancel }) => {
           </div>
         </div>
 
+        <div style={{ display: 'flex', gap: '0.75rem', width: '100%' }}>
+          <div style={{ ...styles.inputGroup, flex: 2 }}>
+            <label style={styles.label}>Deal Name / Number</label>
+            <input 
+              type="text" 
+              placeholder="e.g. Super Saver Deal 1" 
+              style={styles.majorInput}
+              value={dealName}
+              onChange={(e) => setDealName(e.target.value)}
+            />
+          </div>
+          <div style={{ ...styles.inputGroup, flex: 1 }}>
+            <label style={styles.label}>Price (Rs.)</label>
+            <input 
+              type="number" 
+              placeholder="0" 
+              style={styles.majorInput}
+              value={dealPrice}
+              onChange={(e) => setDealPrice(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div style={styles.inputGroup}>
+          <label style={styles.label}>Deal Image</label>
+          <div style={styles.dealUploadArea} onClick={(e) => {
+            if(e.target.closest('button')) return;
+            document.getElementById('dealImageInput').click();
+          }}>
+            {dealImagePreview ? (
+              <>
+                <img src={dealImagePreview} alt="Deal Preview" style={styles.dealPreviewImg} />
+                <button 
+                  type="button"
+                  onClick={(e) => { 
+                    e.stopPropagation(); 
+                    setDealImage(null); 
+                    setDealImagePreview(null); 
+                  }} 
+                  style={styles.removeImageBtn}
+                >
+                  <X size={14} />
+                </button>
+              </>
+            ) : (
+              <div style={styles.dealUploadPrompt}>
+                <Upload size={18} />
+                <span>Upload Image</span>
+              </div>
+            )}
+            <input 
+              id="dealImageInput" 
+              type="file" 
+              onChange={handleDealImageChange} 
+              hidden 
+              accept="image/*"
+            />
+          </div>
+        </div>
+
         <div style={styles.saveBtnContainer}>
           <button 
             onClick={onCancel} 
@@ -369,7 +369,7 @@ const DealCreator = ({ items, categories, initialData, onSave, onCancel }) => {
 
       {showItemVariantModal && selectedItemForVariant && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div className="glass-card" style={{ width: '380px', padding: '1.75rem', backgroundColor: 'var(--bg-card)' }}>
+          <div className="modal-card" style={{ width: '380px', padding: '1.75rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', color: 'var(--text-main)' }}>
               <h3 style={{ fontSize: '1.2rem', fontWeight: '800', margin: 0 }}>Select Variant</h3>
               <button onClick={() => setShowItemVariantModal(false)} style={{ backgroundColor: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={20} /></button>
@@ -617,8 +617,8 @@ const styles = {
     flexShrink: 0,
     display: 'flex',
     flexDirection: 'column',
-    gap: '1.25rem',
-    padding: '1.5rem',
+    gap: '0.75rem',
+    padding: '1.25rem',
     height: 'fit-content',
     maxHeight: '100%',
   },
@@ -640,26 +640,26 @@ const styles = {
     color: 'var(--text-muted)',
   },
   majorInput: {
-    padding: '0.875rem',
-    borderRadius: '10px',
+    padding: '0.6rem 0.8rem',
+    borderRadius: '8px',
     backgroundColor: 'var(--glass)',
     border: '1px solid var(--glass-border)',
     color: 'var(--text-main)',
-    fontSize: '1rem',
+    fontSize: '0.9rem',
     fontWeight: '600',
     width: '100%',
   },
   dealUploadArea: {
     border: '2px dashed var(--glass-border)',
-    borderRadius: '12px',
-    padding: '1rem',
+    borderRadius: '8px',
+    padding: '0.5rem',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'var(--glass)',
     cursor: 'pointer',
     position: 'relative',
-    height: '100px',
+    height: '60px',
     overflow: 'hidden',
   },
   dealPreviewImg: {
@@ -786,8 +786,8 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     gap: '0.5rem',
-    padding: '1rem',
-    fontSize: '1rem',
+    padding: '0.75rem',
+    fontSize: '0.95rem',
   },
 };
 

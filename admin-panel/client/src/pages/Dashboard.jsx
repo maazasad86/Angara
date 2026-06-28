@@ -183,7 +183,7 @@ const Dashboard = () => {
           {/* Add Expense Modal */}
           {showExpenseModal && (
             <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div className="glass-card" style={{ width: '400px', padding: '2rem' }}>
+              <div className="modal-card" style={{ width: '400px', padding: '2rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                   <h2 style={{ color: 'var(--text-main)', fontSize: '1.3rem', margin: 0 }}>Add Daily Expense</h2>
                 </div>

@@ -803,7 +803,7 @@ const POS = () => {
       {/* Held Orders Modal */}
       {showHeldModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div className="glass-card" style={{ width: '500px', maxHeight: '80vh', overflowY: 'auto', padding: '2rem' }}>
+          <div className="modal-card" style={{ width: '500px', maxHeight: '80vh', overflowY: 'auto', padding: '2rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
               <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-main)' }}><Clock size={24} /> Pending Bills ({heldOrders.length})</h2>
               <button onClick={() => setShowHeldModal(false)} style={{ backgroundColor: 'transparent', border: 'none', color: 'var(--text-main)', cursor: 'pointer' }}><X size={24} /></button>
@@ -837,7 +837,7 @@ const POS = () => {
       {/* Hold Bill Prompt Modal */}
       {showHoldPrompt && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div className="glass-card" style={{ width: '400px', padding: '2rem' }}>
+          <div className="modal-card" style={{ width: '400px', padding: '2rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
               <h2 style={{ color: 'var(--text-main)', fontSize: '1.25rem' }}>Hold Bill</h2>
               <button onClick={() => setShowHoldPrompt(false)} style={{ backgroundColor: 'transparent', border: 'none', color: 'var(--text-main)', cursor: 'pointer' }}><X size={24} /></button>
@@ -866,7 +866,7 @@ const POS = () => {
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div className="glass-card" style={{ width: '400px', padding: '2rem', textAlign: 'center' }}>
+          <div className="modal-card" style={{ width: '400px', padding: '2rem', textAlign: 'center' }}>
             <div style={{ marginBottom: '1.5rem', color: '#ef4444' }}>
               <Trash2 size={48} />
             </div>
@@ -940,7 +940,7 @@ const POS = () => {
       {/* Custom Alert/Confirm Modal */}
       {alertConfig.show && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'fadeIn 0.2s ease-out' }}>
-          <div className="glass-card" style={{ width: '350px', padding: '1.5rem', textAlign: 'center', animation: 'scaleIn 0.2s ease-out', border: `1px solid ${alertConfig.type === 'error' ? '#ef4444' : alertConfig.type === 'success' ? '#4ade80' : 'var(--primary-yellow)'}` }}>
+          <div className="modal-card" style={{ width: '350px', padding: '1.5rem', textAlign: 'center', animation: 'scaleIn 0.2s ease-out', border: `1px solid ${alertConfig.type === 'error' ? '#ef4444' : alertConfig.type === 'success' ? '#4ade80' : 'var(--primary-yellow)'}` }}>
             <h3 style={{ margin: '0 0 1rem 0', color: 'var(--text-main)' }}>{alertConfig.title}</h3>
             <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.95rem' }}>{alertConfig.message}</p>
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
