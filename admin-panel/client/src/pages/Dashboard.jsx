@@ -151,7 +151,7 @@ const Dashboard = () => {
                           <tr key={item._id} style={styles.tr}>
                             <td style={styles.td}>
                               <img
-                                src={item.image}
+                                src={item.image || (item.kitchenType === 'BBQ' ? '/assets/bbq_placeholder.png' : item.kitchenType === 'Drinks/Extras' ? '/assets/drinks_placeholder.png' : '/assets/fastfood_placeholder.png')}
                                 alt={item.name}
                                 style={{ width: '40px', height: '40px', borderRadius: '8px', objectFit: 'cover' }}
                               />

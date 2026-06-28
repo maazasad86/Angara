@@ -217,13 +217,11 @@ const DealCreator = ({ items, categories, initialData, onSave, onCancel }) => {
                 onClick={() => addToDeal(item)}
               >
                 <div style={styles.itemImageContainer}>
-                  {item.image ? (
-                    <img src={item.image} alt={item.name} style={styles.itemImage} />
-                  ) : (
-                    <div style={styles.dealPlaceholder}>
-                      <Tag size={30} style={{ color: 'var(--primary-yellow)' }} />
-                    </div>
-                  )}
+                  <img 
+                    src={item.image || (item.kitchenType === 'BBQ' ? '/assets/bbq_placeholder.png' : item.kitchenType === 'Drinks/Extras' ? '/assets/drinks_placeholder.png' : '/assets/fastfood_placeholder.png')} 
+                    alt={item.name} 
+                    style={styles.itemImage} 
+                  />
                   <div style={styles.priceBadge}>Rs. {item.price}</div>
                 </div>
                 <div style={styles.cardInfo}>
@@ -260,9 +258,11 @@ const DealCreator = ({ items, categories, initialData, onSave, onCancel }) => {
                 return (
                   <div key={identifier} style={styles.selectedItem}>
                     <div style={styles.selectedItemLeft}>
-                      {item.image && (
-                        <img src={item.image} alt={item.name} style={styles.selectedItemThumb} />
-                      )}
+                      <img 
+                        src={item.image || (item.kitchenType === 'BBQ' ? '/assets/bbq_placeholder.png' : item.kitchenType === 'Drinks/Extras' ? '/assets/drinks_placeholder.png' : '/assets/fastfood_placeholder.png')} 
+                        alt={item.name} 
+                        style={styles.selectedItemThumb} 
+                      />
                       <div style={styles.selInfo}>
                         <p style={styles.selName}>{item.name}</p>
                         <p style={styles.selMeta}>
@@ -617,8 +617,8 @@ const styles = {
     flexShrink: 0,
     display: 'flex',
     flexDirection: 'column',
-    gap: '0.75rem',
-    padding: '1.25rem',
+    gap: '0.5rem',
+    padding: '1rem',
     height: 'fit-content',
     maxHeight: '100%',
   },
@@ -640,26 +640,26 @@ const styles = {
     color: 'var(--text-muted)',
   },
   majorInput: {
-    padding: '0.6rem 0.8rem',
-    borderRadius: '8px',
+    padding: '0.4rem 0.6rem',
+    borderRadius: '6px',
     backgroundColor: 'var(--glass)',
     border: '1px solid var(--glass-border)',
     color: 'var(--text-main)',
-    fontSize: '0.9rem',
+    fontSize: '0.85rem',
     fontWeight: '600',
     width: '100%',
   },
   dealUploadArea: {
     border: '2px dashed var(--glass-border)',
-    borderRadius: '8px',
-    padding: '0.5rem',
+    borderRadius: '6px',
+    padding: '0.4rem',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'var(--glass)',
     cursor: 'pointer',
     position: 'relative',
-    height: '60px',
+    height: '45px',
     overflow: 'hidden',
   },
   dealPreviewImg: {

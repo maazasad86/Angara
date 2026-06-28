@@ -46,9 +46,11 @@ const DealViewerModal = ({ isOpen, onClose, deal }) => {
                       <span style={styles.itemCategory}>{di.item.category.name}</span>
                     )}
                   </div>
-                  {di.item?.image && (
-                    <img src={di.item.image} alt="item" style={styles.miniItemImage} />
-                  )}
+                  <img 
+                    src={di.item?.image || (di.item?.kitchenType === 'BBQ' ? '/assets/bbq_placeholder.png' : di.item?.kitchenType === 'Drinks/Extras' ? '/assets/drinks_placeholder.png' : '/assets/fastfood_placeholder.png')} 
+                    alt="item" 
+                    style={styles.miniItemImage} 
+                  />
                 </div>
               ))}
             </div>

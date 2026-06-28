@@ -8,7 +8,6 @@ const ItemCreatorModal = ({ isOpen, onClose, itemToEdit, categories, refreshData
   const [formData, setFormData] = useState({
     name: '',
     category: '',
-    subCategory: '',
     kitchenType: 'Fast Food',
     priceType: 'single',
     price: '',
@@ -27,7 +26,6 @@ const ItemCreatorModal = ({ isOpen, onClose, itemToEdit, categories, refreshData
         setFormData({
           name: itemToEdit.name,
           category: itemToEdit.category?._id || '',
-          subCategory: itemToEdit.subCategory || '',
           kitchenType: itemToEdit.kitchenType || 'Fast Food',
           priceType: itemToEdit.priceType || 'single',
           price: itemToEdit.price || '',
@@ -40,7 +38,7 @@ const ItemCreatorModal = ({ isOpen, onClose, itemToEdit, categories, refreshData
         setImagePreview(itemToEdit.image);
       } else {
         setFormData({ 
-          name: '', category: '', subCategory: '', kitchenType: 'Fast Food', priceType: 'single', 
+          name: '', category: '', kitchenType: 'Fast Food', priceType: 'single', 
           price: '', variants: [], spiceLevel: false, addons: [], image: null, isAvailable: true 
         });
         setImagePreview(null);
@@ -111,7 +109,6 @@ const ItemCreatorModal = ({ isOpen, onClose, itemToEdit, categories, refreshData
     const data = new FormData();
     data.append('name', formData.name);
     data.append('category', formData.category);
-    data.append('subCategory', formData.subCategory);
     data.append('kitchenType', formData.kitchenType);
     data.append('priceType', formData.priceType);
     data.append('price', formData.price);
@@ -202,23 +199,6 @@ const ItemCreatorModal = ({ isOpen, onClose, itemToEdit, categories, refreshData
                     ))}
                   </select>
                 </div>
-
-                {formData.category && categories.find(c => c._id === formData.category)?.subCategories?.length > 0 && (
-                  <div style={styles.formGroup}>
-                    <label style={styles.label}>Sub Category</label>
-                    <select 
-                      name="subCategory" 
-                      value={formData.subCategory} 
-                      onChange={handleInputChange}
-                      style={styles.input}
-                    >
-                      <option value="">Select Sub Category</option>
-                      {categories.find(c => c._id === formData.category).subCategories.map((sub, idx) => (
-                        <option key={idx} value={sub}>{sub}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
 
                 <div style={{...styles.formGroup, marginTop: '0.5rem'}}>
                   <label style={styles.toggleLabel}>

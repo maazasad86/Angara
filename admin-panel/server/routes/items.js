@@ -51,13 +51,12 @@ router.post('/', upload.single('image'), async (req, res) => {
     try {
         const { name, category, kitchenType, price, priceType, spiceLevel, variants, addons } = req.body;
 
-        if (!req.file) {
-            return res.status(400).json({ message: 'Image is required' });
+        let imageUrl = '';
+        if (req.file) {
+            // Upload to cloudinary from memory
+            const result = await uploadToCloudinary(req.file.buffer, req.file.mimetype);
+            imageUrl = result.secure_url;
         }
-
-        // Upload to cloudinary from memory
-        const result = await uploadToCloudinary(req.file.buffer, req.file.mimetype);
-        const imageUrl = result.secure_url;
 
         // Parse JSON strings
         let parsedVariants = [];

@@ -25,8 +25,7 @@ const ItemSchema = new mongoose.Schema({
         default: 0
     },
     image: {
-        type: String,
-        required: true
+        type: String
     },
     variants: [
         {

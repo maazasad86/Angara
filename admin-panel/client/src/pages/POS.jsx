@@ -581,13 +581,11 @@ const POS = () => {
                             onClick={() => addToCart(item)}
                           >
                             <div style={styles.itemImageContainer}>
-                              {item.image ? (
-                                <img src={item.image} alt={item.name} style={styles.itemImage} />
-                              ) : (
-                                <div style={styles.dealPlaceholder}>
-                                  <Tag size={40} style={{ color: 'var(--primary-yellow)' }} />
-                                </div>
-                              )}
+                              <img 
+                                src={item.image || (item.kitchenType === 'BBQ' ? '/assets/bbq_placeholder.png' : item.kitchenType === 'Drinks/Extras' ? '/assets/drinks_placeholder.png' : '/assets/fastfood_placeholder.png')} 
+                                alt={item.name} 
+                                style={styles.itemImage} 
+                              />
                               <div style={styles.priceBadge}>
                                 {item.variants && item.variants.length > 0 ? (
                                   `Rs. ${Math.min(...item.variants.map(v => v.price || 0))}+`

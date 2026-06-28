@@ -306,13 +306,11 @@ const Items = () => {
                         )}
 
                         <div style={styles.imageContainer}>
-                          {item.image ? (
-                            <img src={item.image} alt={item.name} style={styles.itemImage} />
-                          ) : (
-                            <div style={styles.placeholderContainer}>
-                              <Package size={32} color="var(--text-muted)" opacity={0.5} />
-                            </div>
-                          )}
+                          <img 
+                            src={item.image || (item.kitchenType === 'BBQ' ? '/assets/bbq_placeholder.png' : item.kitchenType === 'Drinks/Extras' ? '/assets/drinks_placeholder.png' : '/assets/fastfood_placeholder.png')} 
+                            alt={item.name} 
+                            style={styles.itemImage} 
+                          />
                         </div>
 
                         <div style={styles.itemHeaderContainer}>
