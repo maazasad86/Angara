@@ -11,15 +11,15 @@
 }
 
 [data-theme='light'] {
-  --bg-main: #f8f8f8; /* Off-white */
-  --bg-card: #ffffff;
+  --bg-main: #FAF5EE; /* Warm cream */
+  --bg-card: #FFFBF5; /* Warmer white */
   --primary-yellow: #eab308; /* Slightly darker yellow for contrast */
   --accent-red: #ef4444;
-  --text-main: #000000; /* Black text */
-  --text-muted: #4b5563; /* Gray text */
-  --glass: rgba(255, 255, 255, 0.7);
-  --glass-border: rgba(0, 0, 0, 0.08);
-  --sidebar-bg: #ffffff;
+  --text-main: #2C2822; /* Warmer black text */
+  --text-muted: #5A524A; /* Warmer gray text */
+  --glass: rgba(255, 251, 245, 0.7);
+  --glass-border: rgba(0, 0, 0, 0.06);
+  --sidebar-bg: #FFFBF5;
 }
 
 :root {
