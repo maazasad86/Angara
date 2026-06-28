@@ -2,9 +2,6 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Layout from '../components/Layout';
 import { Spinner } from '../components/ui/spinner-1';
-import fastFoodPlaceholder from '../assets/fastfood_placeholder.png';
-import bbqPlaceholder from '../assets/bbq_placeholder.png';
-import drinksPlaceholder from '../assets/drinks_placeholder.png';
 import { Package, Tags, Gift, Activity } from 'lucide-react';
 import { useData } from '../context/DataContext';
 
@@ -153,11 +150,13 @@ const Dashboard = () => {
                         recentItems.map((item) => (
                           <tr key={item._id} style={styles.tr}>
                             <td style={styles.td}>
-                              <img
-                                src={item.image || (item.kitchenType === 'BBQ' ? bbqPlaceholder : item.kitchenType === 'Drinks/Extras' ? drinksPlaceholder : fastFoodPlaceholder)}
-                                alt={item.name}
-                                style={{ width: '40px', height: '40px', borderRadius: '8px', objectFit: 'cover' }}
-                              />
+                              {item.image ? (
+                                <img src={item.image} alt={item.name} style={{ width: '40px', height: '40px', borderRadius: '8px', objectFit: 'cover' }} />
+                              ) : (
+                                <div style={{ width: '40px', height: '40px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.05)' }}>
+                                  <Package size={20} color="var(--primary-yellow)" />
+                                </div>
+                              )}
                             </td>
                             <td style={styles.td}>{item.name}</td>
                             <td style={styles.td}>

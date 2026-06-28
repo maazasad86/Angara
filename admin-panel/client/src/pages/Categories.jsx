@@ -81,7 +81,7 @@ const Categories = () => {
   const handleAdd = async ({ name, subCategories }) => {
     try {
       // Check if the category already exists
-      const existing = categories.find(c => c.name.toLowerCase() === name.toLowerCase());
+      const existing = categories.find(c => c?.name?.toLowerCase() === name?.toLowerCase());
 
       if (existing) {
         // Merge existing subcategories with new ones, avoiding duplicates
@@ -99,7 +99,8 @@ const Categories = () => {
       setShowModal(false);
       refreshData();
     } catch (err) {
-      alert(err.response?.data?.message || 'Error saving category');
+      console.error("Category Add Error: ", err);
+      alert(err.response?.data?.message || err.message || 'Error saving category');
     }
   };
 

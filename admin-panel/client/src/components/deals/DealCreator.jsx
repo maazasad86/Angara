@@ -1,9 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Plus, Minus, Trash2, Package, Tag, Save, Upload, X } from 'lucide-react';
 import axios from 'axios';
-import fastFoodPlaceholder from '../../assets/fastfood_placeholder.png';
-import bbqPlaceholder from '../../assets/bbq_placeholder.png';
-import drinksPlaceholder from '../../assets/drinks_placeholder.png';
 
 const DealCreator = ({ items, categories, initialData, onSave, onCancel }) => {
   const [dealName, setDealName] = useState('');
@@ -220,11 +217,13 @@ const DealCreator = ({ items, categories, initialData, onSave, onCancel }) => {
                 onClick={() => addToDeal(item)}
               >
                 <div style={styles.itemImageContainer}>
-                  <img 
-                    src={item.image || (item.kitchenType === 'BBQ' ? bbqPlaceholder : item.kitchenType === 'Drinks/Extras' ? drinksPlaceholder : fastFoodPlaceholder)} 
-                    alt={item.name} 
-                    style={styles.itemImage} 
-                  />
+                  {item.image ? (
+                    <img src={item.image} alt={item.name} style={styles.itemImage} />
+                  ) : (
+                    <div style={{...styles.itemImage, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.05)'}}>
+                      <Package size={24} color="var(--primary-yellow)" />
+                    </div>
+                  )}
                   <div style={styles.priceBadge}>Rs. {item.price}</div>
                 </div>
                 <div style={styles.cardInfo}>
@@ -261,11 +260,13 @@ const DealCreator = ({ items, categories, initialData, onSave, onCancel }) => {
                 return (
                   <div key={identifier} style={styles.selectedItem}>
                     <div style={styles.selectedItemLeft}>
-                      <img 
-                        src={item.image || (item.kitchenType === 'BBQ' ? bbqPlaceholder : item.kitchenType === 'Drinks/Extras' ? drinksPlaceholder : fastFoodPlaceholder)} 
-                        alt={item.name} 
-                        style={styles.selectedItemThumb} 
-                      />
+                      {item.image ? (
+                        <img src={item.image} alt={item.name} style={styles.selectedItemThumb} />
+                      ) : (
+                        <div style={{...styles.selectedItemThumb, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.05)'}}>
+                          <Package size={16} color="var(--primary-yellow)" />
+                        </div>
+                      )}
                       <div style={styles.selInfo}>
                         <p style={styles.selName}>{item.name}</p>
                         <p style={styles.selMeta}>

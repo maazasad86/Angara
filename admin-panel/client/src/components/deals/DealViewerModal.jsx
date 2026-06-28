@@ -1,8 +1,5 @@
 import React from 'react';
 import { X, Package, Tag } from 'lucide-react';
-import fastFoodPlaceholder from '../../assets/fastfood_placeholder.png';
-import bbqPlaceholder from '../../assets/bbq_placeholder.png';
-import drinksPlaceholder from '../../assets/drinks_placeholder.png';
 
 const DealViewerModal = ({ isOpen, onClose, deal }) => {
   if (!isOpen || !deal) return null;
@@ -49,11 +46,13 @@ const DealViewerModal = ({ isOpen, onClose, deal }) => {
                       <span style={styles.itemCategory}>{di.item.category.name}</span>
                     )}
                   </div>
-                  <img 
-                    src={di.item?.image || (di.item?.kitchenType === 'BBQ' ? bbqPlaceholder : di.item?.kitchenType === 'Drinks/Extras' ? drinksPlaceholder : fastFoodPlaceholder)} 
-                    alt="item" 
-                    style={styles.miniItemImage} 
-                  />
+                  {di.item?.image ? (
+                    <img src={di.item.image} alt="item" style={styles.miniItemImage} />
+                  ) : (
+                    <div style={{...styles.miniItemImage, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.05)'}}>
+                      <Package size={20} color="var(--primary-yellow)" />
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

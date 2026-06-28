@@ -8,10 +8,6 @@ import ShiftModal from '../components/pos/ShiftModal';
 import VariantSelectionModal from '../components/pos/VariantSelectionModal';
 import DealVariantSelectionModal from '../components/pos/DealVariantSelectionModal';
 import { useData } from '../context/DataContext';
-import fastFoodPlaceholder from '../assets/fastfood_placeholder.png';
-import bbqPlaceholder from '../assets/bbq_placeholder.png';
-import drinksPlaceholder from '../assets/drinks_placeholder.png';
-import dealsPlaceholder from '../assets/deals.png';
 
 const POS = () => {
   const { items, categories, deals, isDataLoading } = useData();
@@ -553,7 +549,13 @@ const POS = () => {
                               onClick={() => addToCart(item)}
                             >
                               <div style={styles.itemImageContainer}>
-                                <img src={item.image || dealsPlaceholder} alt={item.name} style={styles.itemImage} />
+                                {item.image ? (
+                                  <img src={item.image} alt={item.name} style={styles.itemImage} />
+                                ) : (
+                                  <div style={{...styles.itemImage, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.05)'}}>
+                                    <Tag size={24} color="var(--primary-yellow)" />
+                                  </div>
+                                )}
                                 <div style={styles.priceBadge}>Rs. {item.price}</div>
                               </div>
                               <div style={styles.cardInfo}>
@@ -579,11 +581,13 @@ const POS = () => {
                             onClick={() => addToCart(item)}
                           >
                             <div style={styles.itemImageContainer}>
-                              <img 
-                                src={item.image || (item.kitchenType === 'BBQ' ? bbqPlaceholder : item.kitchenType === 'Drinks/Extras' ? drinksPlaceholder : fastFoodPlaceholder)} 
-                                alt={item.name} 
-                                style={styles.itemImage} 
-                              />
+                              {item.image ? (
+                                <img src={item.image} alt={item.name} style={styles.itemImage} />
+                              ) : (
+                                <div style={{...styles.itemImage, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.05)'}}>
+                                  <Package size={24} color="var(--primary-yellow)" />
+                                </div>
+                              )}
                               <div style={styles.priceBadge}>
                                 {item.variants && item.variants.length > 0 ? (
                                   `Rs. ${Math.min(...item.variants.map(v => v.price || 0))}+`
