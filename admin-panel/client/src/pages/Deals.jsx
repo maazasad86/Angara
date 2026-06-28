@@ -15,6 +15,7 @@ import {
 import DealCreator from '../components/deals/DealCreator';
 import DealViewerModal from '../components/deals/DealViewerModal';
 import { useData } from '../context/DataContext';
+import dealsPlaceholder from '../assets/deals.png';
 
 const Deals = () => {
   const { deals, items, categories, isDataLoading, refreshData } = useData();
@@ -150,13 +151,7 @@ const Deals = () => {
 
                 {/* Image Container */}
                 <div style={styles.menuDealImageContainer}>
-                  {deal.image ? (
-                    <img src={deal.image} alt={deal.name} style={styles.menuDealImage} />
-                  ) : (
-                    <div style={styles.menuDealPlaceholder}>
-                      <Tag size={36} style={{ color: 'var(--primary-yellow)', opacity: 0.8 }} />
-                    </div>
-                  )}
+                  <img src={deal.image || dealsPlaceholder} alt={deal.name} style={styles.menuDealImage} />
                 </div>
 
                 {/* Price: Dark Red banner patch */}

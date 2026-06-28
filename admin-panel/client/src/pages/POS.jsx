@@ -11,6 +11,7 @@ import { useData } from '../context/DataContext';
 import fastFoodPlaceholder from '../assets/fastfood_placeholder.png';
 import bbqPlaceholder from '../assets/bbq_placeholder.png';
 import drinksPlaceholder from '../assets/drinks_placeholder.png';
+import dealsPlaceholder from '../assets/deals.png';
 
 const POS = () => {
   const { items, categories, deals, isDataLoading } = useData();
@@ -552,13 +553,7 @@ const POS = () => {
                               onClick={() => addToCart(item)}
                             >
                               <div style={styles.itemImageContainer}>
-                                {item.image ? (
-                                  <img src={item.image} alt={item.name} style={styles.itemImage} />
-                                ) : (
-                                  <div style={styles.dealPlaceholder}>
-                                    <Tag size={40} style={{ color: 'var(--primary-yellow)' }} />
-                                  </div>
-                                )}
+                                <img src={item.image || dealsPlaceholder} alt={item.name} style={styles.itemImage} />
                                 <div style={styles.priceBadge}>Rs. {item.price}</div>
                               </div>
                               <div style={styles.cardInfo}>
