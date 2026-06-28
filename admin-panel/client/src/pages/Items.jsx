@@ -294,7 +294,7 @@ const Items = () => {
                               <button onClick={() => { handleEdit(item); setShowDropdown(null); }} style={styles.dropdownItem}>
                                 <Edit2 size={14} style={{ marginRight: '0.4rem' }} /> Edit
                               </button>
-                              <button onClick={() => { toggleAvailability(item._id, isAvail); setShowDropdown(null); }} style={styles.dropdownItem}>
+                              <button onClick={() => { handleToggleAvailability(item._id); setShowDropdown(null); }} style={styles.dropdownItem}>
                                 <Power size={14} style={{ marginRight: '0.4rem' }} /> {isAvail ? 'Mark Out of Stock' : 'Mark Available'}
                               </button>
                               <button onClick={() => { confirmDelete(item._id); setShowDropdown(null); }} style={{ ...styles.dropdownItem, color: 'var(--accent-red)' }}>
