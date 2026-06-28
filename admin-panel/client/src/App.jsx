@@ -49,14 +49,6 @@ function App() {
             } 
           />
           <Route 
-            path="/users" 
-            element={
-              <ProtectedRoute>
-                <Dashboard /> {/* Placeholder for now */}
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
             path="/pos" 
             element={
               <ProtectedRoute>

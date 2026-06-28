@@ -31,7 +31,6 @@ app.use('/api/categories', require('./routes/categories'));
 app.use('/api/items', require('./routes/items'));
 app.use('/api/deals', require('./routes/deals'));
 app.use('/api/sales', require('./routes/sales'));
-app.use('/api/reports', require('./routes/reports'));
 app.use('/api/expenses', require('./routes/expenses'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/print', require('./routes/printer'));
