@@ -1,6 +1,6 @@
 {
   "name": "angara-admin-panel",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "scripts": {
     "start:server": "cd server && npm run dev",
     "start:client": "cd client && npm run dev",

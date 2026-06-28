@@ -20,17 +20,23 @@ mongoose.set('bufferCommands', false); // Disable buffering so queries fail fast
 
 const app = express();
 
-// Middleware
-app.use(cors());
+const corsOptions = {
+    origin: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
+    optionsSuccessStatus: 200,
+};
+
+app.use(cors(corsOptions));
+app.options('/{*path}', cors(corsOptions));
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Fallback for missing uploads to prevent ORB errors (returns JSON instead of HTML)
 app.use('/uploads', (req, res) => {
     res.status(404).json({ error: 'Image not found' });
 });
 
-// Routes Placeholder
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/categories', require('./routes/categories'));
 app.use('/api/items', require('./routes/items'));
