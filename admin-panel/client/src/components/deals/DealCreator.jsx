@@ -207,33 +207,35 @@ const DealCreator = ({ items, categories, initialData, onSave, onCancel }) => {
           )}
         </div>
 
-        <div className="items-grid" style={styles.itemsGridSmall}>
-          {filteredItems.map(item => (
-            <div 
-              key={item._id} 
-              className="glass-card" 
-              style={styles.itemCard}
-              onClick={() => addToDeal(item)}
-            >
-              <div style={styles.itemImageContainer}>
-                {item.image ? (
-                  <img src={item.image} alt={item.name} style={styles.itemImage} />
-                ) : (
-                  <div style={styles.dealPlaceholder}>
-                    <Tag size={40} style={{ color: 'var(--primary-yellow)' }} />
+        {React.useMemo(() => (
+          <div className="items-grid" style={styles.itemsGridSmall}>
+            {filteredItems.map(item => (
+              <div 
+                key={item._id} 
+                className="glass-card" 
+                style={styles.itemCard}
+                onClick={() => addToDeal(item)}
+              >
+                <div style={styles.itemImageContainer}>
+                  {item.image ? (
+                    <img src={item.image} alt={item.name} style={styles.itemImage} />
+                  ) : (
+                    <div style={styles.dealPlaceholder}>
+                      <Tag size={30} style={{ color: 'var(--primary-yellow)' }} />
+                    </div>
+                  )}
+                  <div style={styles.priceBadge}>Rs. {item.price}</div>
+                </div>
+                <div style={styles.cardInfo}>
+                  <h4 style={styles.itemName}>{item.name}</h4>
+                  <div style={styles.addBtn}>
+                    <Plus size={14} />
                   </div>
-                )}
-                <div style={styles.priceBadge}>Rs. {item.price}</div>
-              </div>
-              <div style={styles.cardInfo}>
-                <h4 style={styles.itemName}>{item.name}</h4>
-                <div style={styles.addBtn}>
-                  <Plus size={16} />
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ), [filteredItems])}
       </div>
 
       <div className="glass-card fixed-side-panel" style={styles.configSide}>
@@ -541,23 +543,23 @@ const styles = {
   },
   itemsGridSmall: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
-    gap: '1rem',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
+    gap: '0.75rem',
     overflowY: 'auto',
     paddingRight: '0.5rem',
   },
   itemCard: {
-    padding: '0.75rem',
+    padding: '0.5rem',
     cursor: 'pointer',
     display: 'flex',
     flexDirection: 'column',
-    gap: '0.75rem',
+    gap: '0.5rem',
     transition: 'all 0.2s',
   },
   itemImageContainer: {
     position: 'relative',
     width: '100%',
-    aspectRatio: '1',
+    height: '80px',
     borderRadius: '8px',
     overflow: 'hidden',
     backgroundColor: 'rgba(255,255,255,0.03)',
@@ -617,7 +619,8 @@ const styles = {
     flexDirection: 'column',
     gap: '1.25rem',
     padding: '1.5rem',
-    height: '100%',
+    height: 'fit-content',
+    maxHeight: '100%',
   },
   configHeader: {
     display: 'flex',

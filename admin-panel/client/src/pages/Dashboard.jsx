@@ -3,14 +3,11 @@ import axios from 'axios';
 import Layout from '../components/Layout';
 import { Spinner } from '../components/ui/spinner-1';
 import { Package, Tags, Gift, Activity } from 'lucide-react';
+import { useData } from '../context/DataContext';
 
 const Dashboard = () => {
-  const [statsData, setStatsData] = useState({
-    items: 0,
-    categories: 0,
-    deals: 0,
-  });
-  const [recentItems, setRecentItems] = useState([]);
+  const { items, categories, deals, isDataLoading } = useData();
+
   const [loading, setLoading] = useState(true);
 
   // Business Summary State
@@ -31,36 +28,23 @@ const Dashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
-      const [itemsRes, catsRes, dealsRes, summaryRes] = await Promise.all([
-        axios.get(`http://${(window.location.hostname || 'localhost')}:5000/api/items`),
-        axios.get(`http://${(window.location.hostname || 'localhost')}:5000/api/categories`),
-        axios.get(`http://${(window.location.hostname || 'localhost')}:5000/api/deals`),
-        axios.get(`http://${(window.location.hostname || 'localhost')}:5000/api/dashboard/today`)
-      ]);
-
-      const items = itemsRes.data || [];
-      const categories = catsRes.data || [];
-      const deals = dealsRes.data || [];
+      const summaryRes = await axios.get(`http://${(window.location.hostname || 'localhost')}:5000/api/dashboard/today`);
       const summary = summaryRes.data || { totalSales: 0, totalExpenses: 0, netCash: 0 };
-
       setBusinessSummary(summary);
-
-      setStatsData({
-        items: items.length,
-        categories: categories.length,
-        deals: deals.length,
-      });
-
-      // Sort items by createdAt descending and take top 5
-      const sortedItems = [...items].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 5);
-      setRecentItems(sortedItems);
-
       setLoading(false);
     } catch (err) {
       console.error('Error fetching dashboard data:', err);
       setLoading(false);
     }
   };
+
+  const statsData = {
+    items: items.length,
+    categories: categories.length,
+    deals: deals.length,
+  };
+
+  const recentItems = [...items].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 5);
 
   const handleAddExpense = async () => {
     if (!expenseAmount || !expenseDesc) {
@@ -93,13 +77,10 @@ const Dashboard = () => {
     { title: 'Total Deals', value: statsData.deals, icon: <Gift />, color: 'var(--accent-red)' },
   ];
 
+  if (loading || isDataLoading) return <Layout><div style={{display: 'flex', justifyContent: 'center', padding: '2rem'}}><Spinner /></div></Layout>;
+
   return (
     <Layout>
-      {loading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '6rem', width: '100%' }}>
-          <Spinner size={40} color="var(--primary-yellow)" />
-        </div>
-      ) : (
         <>
           {/* Aaj ka Dhanda Widget */}
           <div className="glass-card" style={{ padding: '1.5rem', marginBottom: '2rem', borderLeft: '4px solid var(--primary-yellow)' }}>
@@ -238,7 +219,6 @@ const Dashboard = () => {
             </div>
           )}
         </>
-      )}
     </Layout>
   );
 };

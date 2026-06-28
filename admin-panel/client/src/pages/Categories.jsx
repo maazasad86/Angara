@@ -4,6 +4,7 @@ import Layout from '../components/Layout';
 import { Spinner } from '../components/ui/spinner-1';
 import ConfirmModal from '../components/ConfirmModal';
 import { Plus, Edit2, Trash2, X, Check } from 'lucide-react';
+import { useData } from '../context/DataContext';
 
 const CategoryFormModal = ({ onClose, onAdd, existingCategories = [] }) => {
   const [name, setName] = useState('');
@@ -68,28 +69,14 @@ const CategoryFormModal = ({ onClose, onAdd, existingCategories = [] }) => {
 };
 
 const Categories = () => {
-  const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { categories, isDataLoading, refreshData } = useData();
   const [isEditing, setIsEditing] = useState(null);
   const [editName, setEditName] = useState('');
   const [editSubCategories, setEditSubCategories] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
 
-  useEffect(() => {
-    fetchCategories();
-  }, []);
-
-  const fetchCategories = async () => {
-    try {
-      const res = await axios.get(`http://${(window.location.hostname || 'localhost')}:5000/api/categories`);
-      setCategories(res.data);
-      setLoading(false);
-    } catch (err) {
-      console.error(err);
-      setLoading(false);
-    }
-  };
+  // Fetching handled by DataContext
 
   const handleAdd = async ({ name, subCategories }) => {
     try {
@@ -124,8 +111,8 @@ const Categories = () => {
     if (!deleteId) return;
     try {
       await axios.delete(`http://${(window.location.hostname || 'localhost')}:5000/api/categories/${deleteId}`);
+      refreshData();
       setDeleteId(null);
-      fetchCategories();
     } catch (err) {
       alert('Error deleting category');
     }
@@ -145,11 +132,21 @@ const Categories = () => {
         subCategories
       });
       setIsEditing(null);
-      fetchCategories();
+      refreshData();
     } catch (err) {
       alert('Error updating category');
     }
   };
+
+  if (isDataLoading) {
+    return (
+      <Layout>
+        <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
+          <Spinner />
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -164,11 +161,7 @@ const Categories = () => {
       </div>
 
       <div className="glass-card" style={styles.tableCard}>
-        {loading ? (
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '4rem', width: '100%' }}>
-            <Spinner size={40} color="var(--primary-yellow)" />
-          </div>
-        ) : categories.length > 0 ? (
+        {categories.length > 0 ? (
           <table style={styles.table}>
             <thead>
               <tr>

@@ -12,20 +12,16 @@ import {
   X
 } from 'lucide-react';
 import DealCreator from '../components/deals/DealCreator';
+import { useData } from '../context/DataContext';
 
 const Deals = () => {
-  const [deals, setDeals] = useState([]);
-  const [items, setItems] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { deals, items, categories, isDataLoading, refreshData } = useData();
   const [isCreating, setIsCreating] = useState(false);
   const [editingDeal, setEditingDeal] = useState(null);
   const [activeMenuId, setActiveMenuId] = useState(null);
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, dealId: null });
 
   useEffect(() => {
-    fetchData();
-    
     const closeMenus = () => setActiveMenuId(null);
     document.addEventListener('click', closeMenus);
     return () => document.removeEventListener('click', closeMenus);
@@ -34,23 +30,6 @@ const Deals = () => {
   const toggleMenu = (dealId, e) => {
     e.stopPropagation();
     setActiveMenuId(prev => (prev === dealId ? null : dealId));
-  };
-
-  const fetchData = async () => {
-    try {
-      const [dealsRes, itemsRes, catsRes] = await Promise.all([
-        axios.get(`http://${(window.location.hostname || 'localhost')}:5000/api/deals`),
-        axios.get(`http://${(window.location.hostname || 'localhost')}:5000/api/items`),
-        axios.get(`http://${(window.location.hostname || 'localhost')}:5000/api/categories`)
-      ]);
-      setDeals(dealsRes.data);
-      setItems(itemsRes.data);
-      setCategories(catsRes.data);
-      setLoading(false);
-    } catch (err) {
-      console.error(err);
-      setLoading(false);
-    }
   };
 
   const handleCreateNew = () => {
@@ -73,7 +52,7 @@ const Deals = () => {
     if (!id) return;
     try {
       await axios.delete(`http://${(window.location.hostname || 'localhost')}:5000/api/deals/${id}`);
-      setDeals(deals.filter(d => d._id !== id));
+      refreshData();
       setConfirmModal({ isOpen: false, dealId: null });
     } catch (err) {
       console.error(err);
@@ -81,15 +60,11 @@ const Deals = () => {
   };
 
   const handleDealSaved = (savedDeal, isEdit) => {
-    if (isEdit) {
-      setDeals(deals.map(d => d._id === savedDeal._id ? savedDeal : d));
-    } else {
-      setDeals([...deals, savedDeal]);
-    }
+    refreshData();
     setIsCreating(false);
   };
 
-  if (loading) return <Layout><div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '4rem', width: '100%' }}><Spinner size={40} color="var(--primary-yellow)" /></div></Layout>;
+  if (isDataLoading) return <Layout><div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '4rem', width: '100%' }}><Spinner size={40} color="var(--primary-yellow)" /></div></Layout>;
 
   return (
     <Layout>

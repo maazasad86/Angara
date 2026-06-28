@@ -13,10 +13,11 @@ import {
   Grid
 } from 'lucide-react';
 import { SkeletonTable } from '../components/Skeleton';
+import { useData } from '../context/DataContext';
 
 const Sales = () => {
+  const { categories, isDataLoading } = useData();
   const [sales, setSales] = useState([]);
-  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   
   // Filters
@@ -88,12 +89,8 @@ const Sales = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [salesRes, catsRes] = await Promise.all([
-        axios.get(`http://${(window.location.hostname || 'localhost')}:5000/api/sales`),
-        axios.get(`http://${(window.location.hostname || 'localhost')}:5000/api/categories`)
-      ]);
+      const salesRes = await axios.get(`http://${(window.location.hostname || 'localhost')}:5000/api/sales`);
       setSales(salesRes.data);
-      setCategories(catsRes.data);
     } catch (err) {
       console.error('Error fetching sales page data:', err);
     } finally {

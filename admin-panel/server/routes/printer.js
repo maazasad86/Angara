@@ -23,7 +23,8 @@ router.post('/', async (req, res) => {
                 interface: PRINTER_INTERFACE,
                 characterSet: 'PC852_LATIN2',
                 removeSpecialCharacters: false,
-                lineCharacter: "=",
+                lineCharacter: "-",
+                width: 42,
                 options:{
                     timeout: 5000
                 }
@@ -41,94 +42,133 @@ router.post('/', async (req, res) => {
         printer.alignCenter();
         
         if (type === 'CUSTOMER_RECEIPT') {
+            printer.alignCenter();
+            printer.setTextDoubleHeight();
             printer.bold(true);
-            printer.setTextSize(2, 2);
-            printer.println("ANGARA RESTAURANT");
+            printer.println("Angaara Bites");
+            
             printer.setTextNormal();
-            printer.println("Food Street, Pakistan");
-            printer.println("Ph: +92 300 1234567");
+            printer.bold(false);
+            printer.println("Ph: +92 3342471192");
             printer.drawLine();
             
             printer.alignLeft();
-            printer.println(`Order ID: ${orderId || 'NEW'}`);
-            printer.println(`Type: ${orderType}`);
-            if (customerName) printer.println(`Customer: ${customerName}`);
-            printer.println(`Date: ${new Date().toLocaleString()}`);
-            printer.drawLine();
-
+            const shortOrderId = orderId ? orderId.toString().slice(-4).toUpperCase() : 'NEW';
+            
             printer.tableCustom([
-                { text: "Item", align: "LEFT", width: 0.5 },
-                { text: "Qty", align: "CENTER", width: 0.15 },
-                { text: "Price", align: "RIGHT", width: 0.35 }
+                { text: "Order:", align: "LEFT", width: 0.15 },
+                { text: shortOrderId, align: "LEFT", width: 0.35 },
+                { text: "Type:", align: "LEFT", width: 0.15 },
+                { text: orderType, align: "LEFT", width: 0.35 }
             ]);
+            
+            printer.tableCustom([
+                { text: "Date:", align: "LEFT", width: 0.15 },
+                { text: new Date().toLocaleString('en-PK', { hour12: true }), align: "LEFT", width: 0.85 }
+            ]);
+            
+            if (customerName) {
+                printer.tableCustom([
+                    { text: "Cust:", align: "LEFT", width: 0.15 },
+                    { text: customerName, align: "LEFT", width: 0.85 }
+                ]);
+            }
+            
+            printer.drawLine();
+            
+            printer.bold(true);
+            printer.tableCustom([
+                { text: "ITEM", align: "LEFT", width: 0.50 },
+                { text: "QTY", align: "CENTER", width: 0.15 },
+                { text: "PRICE", align: "RIGHT", width: 0.35 }
+            ]);
+            printer.bold(false);
             printer.drawLine();
 
             items.forEach(item => {
                 printer.tableCustom([
-                    { text: item.name.substring(0, 20), align: "LEFT", width: 0.5 },
+                    { text: item.name.substring(0, 20), align: "LEFT", width: 0.50 },
                     { text: item.quantity.toString(), align: "CENTER", width: 0.15 },
                     { text: (item.price * item.quantity).toString(), align: "RIGHT", width: 0.35 }
                 ]);
             });
 
             printer.drawLine();
-            printer.alignRight();
+            
+            printer.setTextDoubleHeight();
             printer.bold(true);
-            printer.println(`Total Amount: Rs. ${totalAmount}`);
+            printer.tableCustom([
+                { text: "TOTAL:", align: "LEFT", width: 0.40 },
+                { text: `Rs. ${totalAmount}`, align: "RIGHT", width: 0.60 }
+            ]);
             printer.setTextNormal();
+            printer.bold(false);
+            
+            printer.drawLine();
+            
             printer.alignCenter();
-            printer.println("Thank you for your visit!");
-        } 
+            printer.println("Thank You! Please Visit Again.");
+        }
         else if (type === 'KOT_DESI' || type === 'KOT_FASTFOOD') {
             const isAddon = req.body.isAddon;
             
+            printer.alignCenter();
             printer.bold(true);
-            printer.setTextSize(2, 2);
+            printer.setTextDoubleHeight();
+            printer.setTextDoubleWidth();
+            
             if (isAddon) {
-                printer.println(`[ ADD-ON KOT ]`);
+                printer.println(`** ADD-ON KOT **`);
             } else {
-                printer.println(`[ KOT ]`);
+                printer.println(`** KOT **`);
             }
-            printer.setTextSize(1, 1);
-            printer.println(type === 'KOT_DESI' ? "DESI KITCHEN" : "FAST FOOD KITCHEN");
+            
+            printer.setTextNormal();
+            printer.setTextDoubleHeight();
+            printer.println(type === 'KOT_DESI' ? "DESI KITCHEN" : "FAST FOOD");
             printer.setTextNormal();
             printer.drawLine();
             
             printer.alignLeft();
-            printer.println(`Type: ${orderType}`);
-            printer.println(`Table/Order: ${tableNo || orderId || 'N/A'}`);
-            printer.println(`Time: ${new Date().toLocaleTimeString()}`);
+            if (orderId) {
+                const shortOrderId = orderId.toString().slice(-4).toUpperCase();
+                printer.println(`Order: ${shortOrderId}  |  Type: ${orderType}`);
+            } else {
+                printer.println(`Type: ${orderType}`);
+            }
+            printer.println(`Time: ${new Date().toLocaleTimeString('en-PK', { hour12: true })}`);
+            if (tableNo) printer.println(`Table No: ${tableNo}`);
             printer.drawLine();
             
-            printer.setTextSize(1, 1); // Large font for kitchen
+            // Kitchen Items - very clear and big
+            printer.setTextDoubleHeight();
+            printer.bold(true);
             items.forEach(item => {
-                printer.println(`${item.quantity}x ${item.name}`);
+                printer.println(`[ ${item.quantity} ] x ${item.name}`);
                 if (item.notes) {
                     printer.setTextNormal();
-                    printer.println(`   Note: ${item.notes}`);
-                    printer.setTextSize(1, 1);
+                    printer.println(`  -> Note: ${item.notes}`);
+                    printer.setTextDoubleHeight();
+                    printer.bold(true);
                 }
             });
             printer.setTextNormal();
+            printer.drawLine();
+            printer.println(" "); // Small bottom margin for clean cut
         }
 
         printer.cut();
         printer.beep();
         
         // Execute print
-        if (isConnected) {
-            try {
-                await printer.execute();
-                res.json({ message: 'Printed successfully', type });
-            } catch (printErr) {
-                console.error("Print Execute Error:", printErr);
-                res.status(500).json({ message: 'Error executing print command', error: printErr.message });
-            }
-        } else {
-            console.log("Simulating successful print because printer is disconnected.");
-            res.json({ message: 'Simulated print (Printer offline)', type });
+        try {
+            await printer.execute();
+            console.log("Print executed successfully.");
+            res.json({ message: 'Printed successfully', type });
+        } catch (printErr) {
+            console.error("Print Execute Error:", printErr);
+            res.status(500).json({ message: 'Error executing print command', error: printErr.message });
         }
-
     } catch (err) {
         console.error('PRINTER ROUTE ERROR:', err);
         res.status(500).json({ message: err.message });

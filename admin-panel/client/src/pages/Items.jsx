@@ -3,18 +3,16 @@ import axios from 'axios';
 import Layout from '../components/Layout';
 import ConfirmModal from '../components/ConfirmModal';
 import { Spinner } from '../components/ui/spinner-1';
-import { Plus, Edit2, Trash2, X, Upload, Package, MoreVertical, PlusCircle, Search, Save, Power } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, Upload, Package, MoreVertical, PlusCircle, Search, Save, Power, Tag, Layers, Flame } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
+import { useData } from '../context/DataContext';
 
 const Items = () => {
-  const [items, setItems] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { items: globalItems, categories, isDataLoading, refreshData } = useData();
 
   // Pagination & Search
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const LIMIT = 20;
 
   // Form State
@@ -50,36 +48,27 @@ const Items = () => {
   const [activeSubCategory, setActiveSubCategory] = useState('All');
 
   useEffect(() => {
-    fetchData(1, '');
-  }, []);
+    setCurrentPage(1);
+  }, [activeCategory, activeSubCategory, searchQuery]);
 
-  const fetchData = async (page = 1, search = '') => {
-    setLoading(true);
-    try {
-      const [itemsRes, catsRes] = await Promise.all([
-        axios.get(`http://${(window.location.hostname || 'localhost')}:5000/api/items?page=${page}&limit=${LIMIT}&search=${search}`),
-        axios.get(`http://${(window.location.hostname || 'localhost')}:5000/api/categories`)
-      ]);
-      
-      if (itemsRes.data.items) {
-        setItems(itemsRes.data.items);
-        setTotalPages(itemsRes.data.totalPages);
-        setCurrentPage(itemsRes.data.page);
-      } else {
-        setItems(itemsRes.data); // fallback if limit wasn't applied
-      }
-      
-      setCategories(catsRes.data);
-      setLoading(false);
-    } catch (err) {
-      console.error(err);
-      setLoading(false);
-    }
-  };
+  const filteredItems = useMemo(() => {
+    return globalItems.filter(item => {
+      const matchSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchCat = activeCategory === 'All' || (item.category && item.category.name === activeCategory);
+      const matchSubCat = activeSubCategory === 'All' || item.subCategory === activeSubCategory;
+      return matchSearch && matchCat && matchSubCat;
+    });
+  }, [globalItems, searchQuery, activeCategory, activeSubCategory]);
+
+  const totalPages = Math.ceil(filteredItems.length / LIMIT) || 1;
+  
+  const items = useMemo(() => {
+    const startIndex = (currentPage - 1) * LIMIT;
+    return filteredItems.slice(startIndex, startIndex + LIMIT);
+  }, [filteredItems, currentPage]);
 
   const handleSearch = (e) => {
     e.preventDefault();
-    fetchData(1, searchQuery);
   };
 
   const formatPrice = (price) => {
@@ -165,10 +154,12 @@ const Items = () => {
       if (isEditing) {
         await axios.put(`http://${(window.location.hostname || 'localhost')}:5000/api/items/${isEditing}`, data);
       } else {
-        await axios.post(`http://${(window.location.hostname || 'localhost')}:5000/api/items`, data);
+        await axios.post(`http://${(window.location.hostname || 'localhost')}:5000/api/items`, data, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
       }
+      refreshData();
       resetForm();
-      fetchData(currentPage, searchQuery);
     } catch (err) {
       alert(err.response?.data?.message || 'Error saving item');
     }
@@ -214,26 +205,24 @@ const Items = () => {
     if (!id) return;
     
     try {
-      await axios.delete(`http://${(window.location.hostname || 'localhost')}:5000/api/items/${id}`);
-      fetchData(currentPage, searchQuery);
+      await axios.delete(`http://${(window.location.hostname || 'localhost')}:5000/api/items/${confirmModal.itemId}`);
+      refreshData();
+      setConfirmModal({ isOpen: false, itemId: null });
     } catch (err) {
       alert(err.response?.data?.message || 'Error deleting item');
     }
   };
 
-  const toggleAvailability = async (id, currentStatus) => {
+  const handleToggleAvailability = async (id) => {
     try {
-      // Optimistic update
-      setItems(items.map(item => item._id === id ? { ...item, isAvailable: !currentStatus } : item));
       await axios.put(`http://${(window.location.hostname || 'localhost')}:5000/api/items/${id}/toggle-availability`);
+      refreshData();
     } catch (err) {
       alert('Failed to toggle status');
-      fetchData(currentPage, searchQuery); // Revert on failure
     }
   };
 
   const openBulkModal = () => {
-    // Clone items for bulk edit to avoid mutating main state directly
     setBulkItems(JSON.parse(JSON.stringify(items)));
     setShowBulkModal(true);
   };
@@ -261,25 +250,19 @@ const Items = () => {
         variants: item.variants
       }));
       await axios.put(`http://${(window.location.hostname || 'localhost')}:5000/api/items/bulk/update-prices`, { updates });
+      refreshData();
       setShowBulkModal(false);
-      fetchData(currentPage, searchQuery);
+      alert('Prices updated successfully!');
     } catch(err) {
       alert('Error updating prices');
     }
   };
 
 
-  // Filter items based on activeCategory and activeSubCategory
-  const filteredItems = items.filter(item => {
-    const matchesCategory = activeCategory === 'All' || item.category?.name === activeCategory;
-    const matchesSubCategory = activeSubCategory === 'All' || item.subCategory === activeSubCategory;
-    return matchesCategory && matchesSubCategory;
-  });
-
-  // Group filteredItems by subCategory
+  // Group items by subCategory
   const groupedItems = useMemo(() => {
     const groups = {};
-    filteredItems.forEach(item => {
+    items.forEach(item => {
       const sub = item.subCategory && item.subCategory.trim() ? item.subCategory.trim() : 'Uncategorized';
       if (!groups[sub]) {
         groups[sub] = [];
@@ -304,35 +287,38 @@ const Items = () => {
     });
 
     return sortedGroups;
-  }, [filteredItems, activeCategory, categories]);
+  }, [items, activeCategory, categories]);
+
+  if (isDataLoading) {
+    return (
+      <Layout>
+        <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
+          <Spinner />
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
-      <div style={styles.headerRow}>
-        <div>
-          <h2 style={styles.sectionTitle}>Manage Items</h2>
-          <p style={styles.sectionSubtitle}>Add, organize, and quickly update your menu.</p>
-        </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '8fr 2fr 2fr', gap: '1rem', marginBottom: '1.25rem', width: '100%' }}>
+        <form onSubmit={handleSearch} style={{...styles.searchBar, width: '100%', boxSizing: 'border-box', display: 'flex'}}>
+          <Search size={18} color="var(--text-muted)" />
+          <input 
+            type="text" 
+            placeholder="Search Items..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{...styles.searchInput, width: '100%'}}
+          />
+        </form>
         
-        <div style={{display: 'flex', gap: '1rem', alignItems: 'center'}}>
-          <form onSubmit={handleSearch} style={styles.searchBar}>
-            <Search size={18} color="var(--text-muted)" />
-            <input 
-              type="text" 
-              placeholder="Search Items..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={styles.searchInput}
-            />
-          </form>
-          
-          <button onClick={openBulkModal} className="btn-secondary" style={{display: 'flex', alignItems: 'center', gap: '0.4rem'}}>
-            <Edit2 size={16} /> Bulk Price Edit
-          </button>
-          <button onClick={() => setShowModal(true)} className="btn-primary" style={{display: 'flex', alignItems: 'center', gap: '0.4rem'}}>
-            <Plus size={18} /> Add New Item
-          </button>
-        </div>
+        <button onClick={openBulkModal} className="btn-secondary" style={{display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', padding: '0.5rem'}}>
+          <Edit2 size={18} />
+        </button>
+        <button onClick={() => setShowModal(true)} className="btn-primary" style={{display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', padding: '0.5rem'}}>
+          <Plus size={20} />
+        </button>
       </div>
 
       <div style={styles.tabsContainer}>
@@ -397,11 +383,7 @@ const Items = () => {
       )}
 
       <div className="items-container" style={styles.itemsContainer}>
-        {loading ? (
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '4rem', width: '100%' }}>
-            <Spinner size={40} color="var(--primary-yellow)" />
-          </div>
-        ) : Object.keys(groupedItems).length > 0 ? (
+        {Object.keys(groupedItems).length > 0 ? (
           Object.keys(groupedItems).map(subCat => {
             const groupItems = groupedItems[subCat];
             const showHeading = Object.keys(groupedItems).length > 1 || (subCat !== 'Uncategorized');
@@ -415,7 +397,7 @@ const Items = () => {
                   {groupItems.map((item) => {
                     const isAvail = item.isAvailable !== false;
                     return (
-                      <div key={item._id} className="glass-card hover-scale" style={{...styles.itemCard, opacity: isAvail ? 1 : 0.6}}>
+                      <div key={item._id} className="hover-scale" style={{...styles.itemCard, opacity: isAvail ? 1 : 0.6}}>
                         <div style={styles.menuDotContainer}>
                           <button
                             onClick={(e) => {
@@ -595,29 +577,35 @@ const Items = () => {
               <button onClick={resetForm} style={styles.closeBtn}><X /></button>
             </div>
 
-            <form onSubmit={handleSubmit} style={{display: 'flex', flexDirection: 'column', gap: '2rem'}}>
+            <form onSubmit={handleSubmit} style={{display: 'flex', flexDirection: 'column', gap: '2.5rem', marginTop: '1rem'}}>
               
-              <div style={styles.formSection}>
-                <h4 style={styles.formSectionTitle}>1. Basic Information</h4>
+              {/* Section 1 */}
+              <div style={styles.formSectionCard}>
+                <div style={styles.sectionHeader}>
+                  <div style={styles.sectionNumber}>1</div>
+                  <h4 style={styles.sectionTitleText}>Basic Information</h4>
+                </div>
                 <div style={styles.formGrid}>
                   <div style={styles.formLeft}>
                     <div style={styles.formGroup}>
-                      <label>Item Name</label>
+                      <label style={styles.label}>Item Name</label>
                       <input 
                         name="name" 
                         value={formData.name} 
                         onChange={handleInputChange} 
                         placeholder="e.g. Chicken Karahi"
+                        style={styles.input}
                         required 
                       />
                     </div>
 
                     <div style={styles.formGroup}>
-                      <label>Category</label>
+                      <label style={styles.label}>Category</label>
                       <select 
                         name="category" 
                         value={formData.category} 
                         onChange={handleInputChange} 
+                        style={styles.input}
                         required
                       >
                         <option value="">Select Category</option>
@@ -629,11 +617,12 @@ const Items = () => {
 
                     {formData.category && categories.find(c => c._id === formData.category)?.subCategories?.length > 0 && (
                       <div style={styles.formGroup}>
-                        <label>Sub Category</label>
+                        <label style={styles.label}>Sub Category</label>
                         <select 
                           name="subCategory" 
                           value={formData.subCategory} 
                           onChange={handleInputChange}
+                          style={styles.input}
                         >
                           <option value="">Select Sub Category</option>
                           {categories.find(c => c._id === formData.category).subCategories.map((sub, idx) => (
@@ -643,23 +632,26 @@ const Items = () => {
                       </div>
                     )}
 
-                    <div style={styles.formGroup}>
-                      <label style={{display: 'flex', alignItems: 'center', gap: '0.8rem', cursor: 'pointer', color: 'var(--text-main)', marginTop: '0.5rem'}}>
+                    <div style={{...styles.formGroup, marginTop: '0.5rem'}}>
+                      <label style={styles.toggleLabel}>
+                        <div style={{...styles.toggleSwitch, ...(formData.isAvailable ? styles.toggleSwitchActive : {})}}>
+                           <div style={{...styles.toggleThumb, ...(formData.isAvailable ? styles.toggleThumbActive : {})}} />
+                        </div>
                         <input 
                           type="checkbox" 
                           name="isAvailable"
                           checked={formData.isAvailable} 
                           onChange={handleInputChange}
-                          style={{width: '18px', height: '18px'}}
+                          style={{display: 'none'}}
                         />
-                        Item is Available (In Stock)
+                        <span style={{fontWeight: '600', color: 'var(--text-main)'}}>Item is Available (In Stock)</span>
                       </label>
                     </div>
 
                   </div>
 
                   <div style={styles.formRight}>
-                    <label style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '0.4rem', display: 'block' }}>Item Image</label>
+                    <label style={styles.label}>Item Image</label>
                     <div style={styles.uploadArea} onClick={() => document.getElementById('imageInput').click()}>
                       {isCompressing ? (
                          <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px'}}>
@@ -667,12 +659,16 @@ const Items = () => {
                            <span>Compressing...</span>
                          </div>
                       ) : imagePreview ? (
-                        <img src={imagePreview} alt="Preview" style={styles.previewImg} />
+                        <div style={styles.previewContainer}>
+                           <img src={imagePreview} alt="Preview" style={styles.previewImg} />
+                           <div style={styles.changeImageOverlay}><span>Change Image</span></div>
+                        </div>
                       ) : (
-                        <>
-                          <Upload size={28} />
-                          <span>Click to upload (Auto-compressed)</span>
-                        </>
+                        <div style={styles.uploadPlaceholder}>
+                          <div style={styles.uploadIconWrapper}><Upload size={24} color="var(--primary-yellow)" /></div>
+                          <span style={styles.uploadTextMain}>Click to upload</span>
+                          <span style={styles.uploadTextSub}>(Auto-compressed)</span>
+                        </div>
                       )}
                       <input 
                         id="imageInput" 
@@ -686,68 +682,92 @@ const Items = () => {
                 </div>
               </div>
 
-              <div style={styles.formSection}>
-                <h4 style={styles.formSectionTitle}>2. Pricing & Portions</h4>
+              {/* Section 2 */}
+              <div style={styles.formSectionCard}>
+                <div style={styles.sectionHeader}>
+                  <div style={styles.sectionNumber}>2</div>
+                  <h4 style={styles.sectionTitleText}>Pricing & Portions</h4>
+                </div>
+                
                 <div style={styles.formGroup}>
-                  <label>Price Type</label>
-                  <div style={{display: 'flex', gap: '1rem', marginTop: '0.5rem'}}>
-                    <label style={styles.radioLabel}>
+                  <label style={styles.label}>Price Type</label>
+                  <div style={styles.priceTypeContainer}>
+                    <label style={{...styles.priceTypeCard, ...(formData.priceType === 'single' ? styles.priceTypeCardActive : {})}}>
                       <input 
                         type="radio" 
                         name="priceType" 
                         value="single" 
                         checked={formData.priceType === 'single'} 
                         onChange={handleInputChange} 
+                        style={{display: 'none'}}
                       />
-                      Single Price (e.g. Burger)
+                      <div style={{...styles.priceTypeIconWrapper, ...(formData.priceType === 'single' ? styles.iconActive : {})}}><Tag size={18} /></div>
+                      <div style={styles.priceTypeText}>
+                        <span style={styles.priceTypeTitle}>Single Price</span>
+                        <span style={styles.priceTypeSub}>(e.g. Burger)</span>
+                      </div>
                     </label>
-                    <label style={styles.radioLabel}>
+                    <label style={{...styles.priceTypeCard, ...(formData.priceType === 'variants' ? styles.priceTypeCardActive : {})}}>
                       <input 
                         type="radio" 
                         name="priceType" 
                         value="variants" 
                         checked={formData.priceType === 'variants'} 
                         onChange={handleInputChange} 
+                        style={{display: 'none'}}
                       />
-                      Multiple Portions (e.g. Half/Full/KG)
+                      <div style={{...styles.priceTypeIconWrapper, ...(formData.priceType === 'variants' ? styles.iconActive : {})}}><Layers size={18} /></div>
+                      <div style={styles.priceTypeText}>
+                        <span style={styles.priceTypeTitle}>Multiple Portions</span>
+                        <span style={styles.priceTypeSub}>(e.g. Half/Full/KG)</span>
+                      </div>
                     </label>
                   </div>
                 </div>
 
                 {formData.priceType === 'single' ? (
-                  <div style={styles.formGroup}>
-                    <label>Item Price (Rs.)</label>
-                    <input 
-                      type="number" 
-                      name="price" 
-                      value={formData.price} 
-                      onChange={handleInputChange} 
-                      placeholder="e.g. 350"
-                    />
+                  <div style={{...styles.formGroup, width: '50%', marginTop: '1rem'}}>
+                    <label style={styles.label}>Item Price (Rs.)</label>
+                    <div style={styles.priceInputWrapper}>
+                      <span style={styles.currencyPrefix}>Rs.</span>
+                      <input 
+                        type="number" 
+                        name="price" 
+                        value={formData.price} 
+                        onChange={handleInputChange} 
+                        placeholder="e.g. 350"
+                        style={{...styles.input, paddingLeft: '3rem'}}
+                      />
+                    </div>
                   </div>
                 ) : (
-                  <div style={{...styles.formGroup, backgroundColor: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)'}}>
-                    <label>Define Portions/Variants</label>
-                    {formData.variants.map((variant, index) => (
-                      <div key={index} style={styles.dynamicRow}>
-                        <input 
-                          placeholder="Portion Name (e.g. Half)" 
-                          value={variant.name} 
-                          onChange={(e) => handleVariantChange(index, 'name', e.target.value)} 
-                          style={{ flex: 2 }}
-                          required
-                        />
-                        <input 
-                          placeholder="Price (Rs.)" 
-                          type="number" 
-                          value={variant.price} 
-                          onChange={(e) => handleVariantChange(index, 'price', e.target.value)} 
-                          style={{ flex: 1 }}
-                          required
-                        />
-                        <button type="button" onClick={() => handleRemoveVariant(index)} style={styles.removeBtn}><X size={18} /></button>
-                      </div>
-                    ))}
+                  <div style={styles.variantsContainer}>
+                    <label style={styles.label}>Define Portions/Variants</label>
+                    <div style={{display: 'flex', flexDirection: 'column', gap: '0.8rem'}}>
+                      {formData.variants.map((variant, index) => (
+                        <div key={index} style={styles.dynamicRow}>
+                          <input 
+                            placeholder="Portion Name (e.g. Half)" 
+                            value={variant.name} 
+                            onChange={(e) => handleVariantChange(index, 'name', e.target.value)} 
+                            style={{ ...styles.input, flex: 2 }}
+                            required
+                          />
+                          <div style={{...styles.priceInputWrapper, flex: 1.5}}>
+                             <span style={styles.currencyPrefix}>Rs.</span>
+                             <input 
+                               placeholder="Price" 
+                               type="number" 
+                               value={variant.price} 
+                               onChange={(e) => handleVariantChange(index, 'price', e.target.value)} 
+                               style={{ ...styles.input, paddingLeft: '3rem', width: '100%' }}
+                               required
+                             />
+                          </div>
+                          <button type="button" onClick={() => handleRemoveVariant(index)} style={styles.removeBtn}><X size={18} /></button>
+                        </div>
+                      ))}
+                    </div>
                     <button type="button" onClick={handleAddVariant} style={styles.addBtn}>
                       <PlusCircle size={16} /> Add Variant
                     </button>
@@ -755,54 +775,71 @@ const Items = () => {
                 )}
               </div>
 
-              <div style={styles.formSection}>
-                <h4 style={styles.formSectionTitle}>3. Extras & Sides</h4>
-                <div style={{...styles.formGroup, backgroundColor: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)'}}>
-                  <label style={{display: 'flex', alignItems: 'center', gap: '0.8rem', cursor: 'pointer', color: 'var(--text-main)', fontWeight: 'bold'}}>
+              {/* Section 3 */}
+              <div style={styles.formSectionCard}>
+                <div style={styles.sectionHeader}>
+                  <div style={styles.sectionNumber}>3</div>
+                  <h4 style={styles.sectionTitleText}>Extras & Sides</h4>
+                </div>
+                
+                <div style={{...styles.spiceLevelCard, ...(formData.spiceLevel ? styles.spiceLevelCardActive : {})}}>
+                  <div style={styles.spiceLevelInfo}>
+                    <div style={styles.spiceLevelIconWrapper}><Flame size={20} color={formData.spiceLevel ? "#fff" : "var(--accent-red)"} /></div>
+                    <div>
+                       <span style={{fontWeight: '700', color: formData.spiceLevel ? '#fff' : 'var(--text-main)', display: 'block', marginBottom: '4px'}}>Ask for Spice Level?</span>
+                       <span style={{fontSize: '0.85rem', color: formData.spiceLevel ? 'rgba(255,255,255,0.8)' : 'var(--text-muted)'}}>If enabled, customers will be asked to choose Mild, Normal, Spicy, or Extra Spicy.</span>
+                    </div>
+                  </div>
+                  <label style={styles.toggleLabel}>
+                    <div style={{...styles.toggleSwitch, ...(formData.spiceLevel ? styles.toggleSwitchActive : {})}}>
+                       <div style={{...styles.toggleThumb, ...(formData.spiceLevel ? styles.toggleThumbActive : {})}} />
+                    </div>
                     <input 
                       type="checkbox" 
                       name="spiceLevel"
                       checked={formData.spiceLevel} 
                       onChange={handleInputChange}
-                      style={{width: '20px', height: '20px'}}
+                      style={{display: 'none'}}
                     />
-                    Ask for Spice Level?
                   </label>
-                  <p style={{fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: '2.3rem', marginTop: '4px'}}>
-                    If enabled, customers will be asked to choose Mild, Normal, Spicy, or Extra Spicy.
-                  </p>
                 </div>
 
-                <div style={{...styles.formGroup, backgroundColor: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', marginTop: '1rem'}}>
-                  <label>Extras / Sides (e.g. Raita, Extra Cheese)</label>
-                  {formData.addons.map((addon, index) => (
-                    <div key={index} style={styles.dynamicRow}>
-                      <input 
-                        placeholder="Extra/Side Name" 
-                        value={addon.name} 
-                        onChange={(e) => handleAddonChange(index, 'name', e.target.value)} 
-                        style={{ flex: 2 }}
-                        required
-                      />
-                      <input 
-                        placeholder="Price (Rs.)" 
-                        type="number" 
-                        value={addon.price} 
-                        onChange={(e) => handleAddonChange(index, 'price', e.target.value)} 
-                        style={{ flex: 1 }}
-                        required
-                      />
-                      <button type="button" onClick={() => handleRemoveAddon(index)} style={styles.removeBtn}><X size={18} /></button>
-                    </div>
-                  ))}
+                <div style={{marginTop: '1.5rem'}}>
+                  <label style={styles.label}>Extras / Sides (e.g. Raita, Extra Cheese)</label>
+                  <div style={{display: 'flex', flexDirection: 'column', gap: '0.8rem', marginTop: '0.5rem'}}>
+                    {formData.addons.map((addon, index) => (
+                      <div key={index} style={styles.dynamicRow}>
+                        <input 
+                          placeholder="Extra/Side Name" 
+                          value={addon.name} 
+                          onChange={(e) => handleAddonChange(index, 'name', e.target.value)} 
+                          style={{ ...styles.input, flex: 2 }}
+                          required
+                        />
+                        <div style={{...styles.priceInputWrapper, flex: 1.5}}>
+                           <span style={styles.currencyPrefix}>Rs.</span>
+                           <input 
+                             placeholder="Price" 
+                             type="number" 
+                             value={addon.price} 
+                             onChange={(e) => handleAddonChange(index, 'price', e.target.value)} 
+                             style={{ ...styles.input, paddingLeft: '3rem', width: '100%' }}
+                             required
+                           />
+                        </div>
+                        <button type="button" onClick={() => handleRemoveAddon(index)} style={styles.removeBtn}><X size={18} /></button>
+                      </div>
+                    ))}
+                  </div>
                   <button type="button" onClick={handleAddAddon} style={styles.addBtn}>
                     <PlusCircle size={16} /> Add Extra/Side
                   </button>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem', borderTop: '1px solid var(--glass-border)', paddingTop: '1.5rem' }}>
-                <button type="submit" className="btn-primary" disabled={isCompressing}>
+              <div style={styles.formActions}>
+                <button type="button" className="btn-secondary" onClick={resetForm}>Cancel</button>
+                <button type="submit" className="btn-primary" disabled={isCompressing} style={{padding: '0.8rem 2rem', fontSize: '1rem', fontWeight: 'bold'}}>
                   {isEditing ? 'Update Item' : 'Save Item'}
                 </button>
               </div>
@@ -870,6 +907,8 @@ const styles = {
     borderRadius: '8px',
     fontWeight: '600',
     fontSize: '0.8rem',
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
     border: '1px solid var(--glass-border)',
     transition: 'all 0.3s ease',
     cursor: 'pointer',
@@ -916,9 +955,9 @@ const styles = {
     gap: '1.5rem',
   },
   itemCard: {
-    backgroundColor: 'var(--glass)',
+    backgroundColor: 'var(--bg-card)',
     borderRadius: '16px',
-    border: '1px solid var(--glass-border)',
+    border: '1px solid rgba(255, 255, 255, 0.05)',
     padding: '1.25rem',
     display: 'flex',
     flexDirection: 'column',
@@ -953,8 +992,8 @@ const styles = {
     zIndex: 10,
   },
   menuDotBtn: {
-    backgroundColor: 'var(--glass)',
-    border: '1px solid var(--glass-border)',
+    backgroundColor: 'var(--bg-card)',
+    border: '1px solid black',
     borderRadius: '50%',
     width: '32px',
     height: '32px',
@@ -1076,13 +1115,13 @@ const styles = {
     zIndex: 1000,
   },
   modal: {
-    width: '90%',
-    maxWidth: '720px',
-    padding: '1.75rem',
+    width: '95%',
+    maxWidth: '800px',
+    padding: '2rem',
     backgroundColor: 'var(--bg-card)',
-    borderRadius: '16px',
+    borderRadius: '20px',
     border: '1px solid var(--glass-border)',
-    boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
+    boxShadow: '0 25px 50px -12px rgba(0,0,0,0.7)',
     maxHeight: '90vh',
     overflowY: 'auto',
   },
@@ -1093,25 +1132,50 @@ const styles = {
     marginBottom: '1.25rem',
     color: 'var(--text-main)',
   },
-  formSection: {
-    marginBottom: '1rem'
+  formSectionCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    border: '1px solid var(--glass-border)',
+    borderRadius: '16px',
+    padding: '1.5rem',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1.25rem'
   },
-  formSectionTitle: {
-    color: 'var(--primary-yellow)',
-    borderBottom: '1px solid var(--glass-border)',
-    paddingBottom: '0.5rem',
-    marginBottom: '1rem',
-    fontSize: '1rem'
+  sectionHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.75rem',
+    borderBottom: '1px solid rgba(255,255,255,0.05)',
+    paddingBottom: '1rem',
+    marginBottom: '0.5rem'
+  },
+  sectionNumber: {
+    backgroundColor: 'var(--primary-yellow)',
+    color: '#000',
+    width: '28px',
+    height: '28px',
+    borderRadius: '50%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontWeight: '900',
+    fontSize: '0.9rem'
+  },
+  sectionTitleText: {
+    color: 'var(--text-main)',
+    fontSize: '1.1rem',
+    margin: 0,
+    fontWeight: '700'
   },
   formGrid: {
     display: 'grid',
     gridTemplateColumns: '1.2fr 1fr',
-    gap: '1.5rem',
+    gap: '2rem',
   },
   formLeft: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '0.9rem',
+    gap: '1.25rem',
   },
   formRight: {
     display: 'flex',
@@ -1120,22 +1184,200 @@ const styles = {
   formGroup: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '0.4rem',
-    color: 'var(--text-muted)',
+    gap: '0.5rem',
   },
-  radioLabel: {
+  label: {
+    color: 'var(--text-muted)',
+    fontSize: '0.9rem',
+    fontWeight: '600'
+  },
+  input: {
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    border: '1px solid var(--glass-border)',
+    borderRadius: '8px',
+    padding: '0.75rem 1rem',
+    color: 'var(--text-main)',
+    fontSize: '0.95rem',
+    outline: 'none',
+    transition: 'border-color 0.2s',
+    width: '100%',
+    boxSizing: 'border-box'
+  },
+  toggleLabel: {
     display: 'flex',
     alignItems: 'center',
-    gap: '0.4rem',
-    color: 'var(--text-main)',
+    gap: '1rem',
     cursor: 'pointer',
-    fontSize: '0.9rem'
+  },
+  toggleSwitch: {
+    width: '44px',
+    height: '24px',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: '12px',
+    position: 'relative',
+    transition: 'background-color 0.3s ease',
+  },
+  toggleSwitchActive: {
+    backgroundColor: 'var(--primary-yellow)',
+  },
+  toggleThumb: {
+    width: '20px',
+    height: '20px',
+    backgroundColor: '#fff',
+    borderRadius: '50%',
+    position: 'absolute',
+    top: '2px',
+    left: '2px',
+    transition: 'transform 0.3s ease',
+  },
+  toggleThumbActive: {
+    transform: 'translateX(20px)',
+  },
+  priceTypeContainer: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '1rem',
+  },
+  priceTypeCard: {
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    border: '1px solid var(--glass-border)',
+    borderRadius: '12px',
+    padding: '1rem',
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: '0.8rem',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+  },
+  priceTypeCardActive: {
+    backgroundColor: 'rgba(var(--primary-yellow-rgb, 250, 204, 21), 0.1)',
+    borderColor: 'var(--primary-yellow)',
+  },
+  priceTypeIconWrapper: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    padding: '0.5rem',
+    borderRadius: '8px',
+    color: 'var(--text-muted)'
+  },
+  iconActive: {
+    color: 'var(--primary-yellow)',
+    backgroundColor: 'rgba(var(--primary-yellow-rgb, 250, 204, 21), 0.2)',
+  },
+  priceTypeText: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.2rem'
+  },
+  priceTypeTitle: {
+    color: 'var(--text-main)',
+    fontWeight: '600',
+    fontSize: '0.95rem'
+  },
+  priceTypeSub: {
+    color: 'var(--text-muted)',
+    fontSize: '0.8rem'
+  },
+  priceInputWrapper: {
+    position: 'relative',
+    display: 'flex',
+    alignItems: 'center',
+    width: '100%'
+  },
+  currencyPrefix: {
+    position: 'absolute',
+    left: '1rem',
+    color: 'var(--text-muted)',
+    fontWeight: '600',
+    fontSize: '0.95rem',
+    pointerEvents: 'none'
+  },
+  variantsContainer: {
+    backgroundColor: 'rgba(0,0,0,0.15)',
+    border: '1px solid rgba(255,255,255,0.05)',
+    borderRadius: '12px',
+    padding: '1.25rem',
+    marginTop: '1rem'
+  },
+  spiceLevelCard: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(255, 59, 48, 0.05)',
+    border: '1px solid rgba(255, 59, 48, 0.2)',
+    borderRadius: '12px',
+    padding: '1.25rem',
+    transition: 'all 0.3s ease'
+  },
+  spiceLevelCardActive: {
+    backgroundColor: 'var(--accent-red)',
+    borderColor: 'var(--accent-red)',
+  },
+  spiceLevelInfo: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '1rem'
+  },
+  spiceLevelIconWrapper: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    padding: '0.6rem',
+    borderRadius: '50%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  previewContainer: {
+    position: 'relative',
+    width: '100%',
+    height: '100%',
+    borderRadius: '12px',
+    overflow: 'hidden'
+  },
+  changeImageOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    color: '#fff',
+    padding: '0.5rem',
+    textAlign: 'center',
+    fontSize: '0.85rem',
+    fontWeight: '600'
+  },
+  uploadPlaceholder: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '0.5rem'
+  },
+  uploadIconWrapper: {
+    backgroundColor: 'rgba(250, 204, 21, 0.1)',
+    padding: '1rem',
+    borderRadius: '50%',
+    marginBottom: '0.5rem'
+  },
+  uploadTextMain: {
+    color: 'var(--text-main)',
+    fontWeight: '600',
+    fontSize: '0.95rem'
+  },
+  uploadTextSub: {
+    color: 'var(--text-muted)',
+    fontSize: '0.8rem'
+  },
+  formActions: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: '1rem',
+    marginTop: '0.5rem',
+    borderTop: '1px solid var(--glass-border)',
+    paddingTop: '1.5rem'
   },
   dynamicRow: {
     display: 'flex',
     gap: '0.8rem',
     alignItems: 'center',
-    marginTop: '0.8rem'
   },
   removeBtn: {
     background: 'none',
@@ -1185,7 +1427,8 @@ const styles = {
     gap: '0.4rem',
     fontSize: '0.85rem',
     color: 'var(--text-muted)',
-    minHeight: '140px',
+    minHeight: '220px',
+    backgroundColor: 'rgba(0,0,0,0.1)',
   },
   previewImg: {
     width: '100%',

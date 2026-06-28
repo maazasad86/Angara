@@ -7,15 +7,13 @@ import CheckoutModal from '../components/pos/CheckoutModal';
 import ShiftModal from '../components/pos/ShiftModal';
 import VariantSelectionModal from '../components/pos/VariantSelectionModal';
 import DealVariantSelectionModal from '../components/pos/DealVariantSelectionModal';
+import { useData } from '../context/DataContext';
 
 const POS = () => {
-  const [items, setItems] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [deals, setDeals] = useState([]);
+  const { items, categories, deals, isDataLoading } = useData();
   const [activeCategory, setActiveCategory] = useState('All');
   const [activeSubCategory, setActiveSubCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
-  const [loading, setLoading] = useState(true);
 
   // Cart/Bill State
   const [cart, setCart] = useState([]);
@@ -66,7 +64,6 @@ const POS = () => {
   };
 
   useEffect(() => {
-    fetchData();
     const storedHolds = localStorage.getItem('angaara_held_orders');
     if (storedHolds) {
       try {
@@ -74,23 +71,6 @@ const POS = () => {
       } catch (e) { console.error(e); }
     }
   }, []);
-
-  const fetchData = async () => {
-    try {
-      const [itemsRes, catsRes, dealsRes] = await Promise.all([
-        axios.get(`http://${(window.location.hostname || 'localhost')}:5000/api/items`),
-        axios.get(`http://${(window.location.hostname || 'localhost')}:5000/api/categories`),
-        axios.get(`http://${(window.location.hostname || 'localhost')}:5000/api/deals`)
-      ]);
-      setItems(itemsRes.data);
-      setCategories(catsRes.data);
-      setDeals(dealsRes.data);
-      setLoading(false);
-    } catch (err) {
-      console.error(err);
-      setLoading(false);
-    }
-  };
 
   const addToCart = (item, chosenVariant = null, chosenDealItemVariants = null, customQuantity = 1) => {
     // 1. If it's a Deal
@@ -256,8 +236,13 @@ const POS = () => {
     // Check if this is an add-on KOT
     const isAddon = cart.some(item => item.isPrinted);
 
-    const desiItems = unprintedItems.filter(i => i.category?.name?.toLowerCase().includes('desi') || i.category?.name?.toLowerCase().includes('bbq'));
-    const fastFoodItems = unprintedItems.filter(i => !i.category?.name?.toLowerCase().includes('desi') && !i.category?.name?.toLowerCase().includes('bbq') && !i.category?.name?.toLowerCase().includes('drink'));
+    const isBbqOrRoll = (i) => {
+      const cat = i.category?.name?.toLowerCase() || '';
+      return cat.includes('desi') || cat.includes('bbq') || cat.includes('roll') || cat.includes('kebab') || cat.includes('boti');
+    };
+
+    const desiItems = unprintedItems.filter(isBbqOrRoll);
+    const fastFoodItems = unprintedItems.filter(i => !isBbqOrRoll(i) && !i.category?.name?.toLowerCase().includes('drink'));
 
     try {
       if (desiItems.length > 0) {
@@ -430,6 +415,16 @@ const POS = () => {
     }
   };
 
+  if (isDataLoading) {
+    return (
+      <Layout>
+        <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
+          <Spinner />
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <div className="responsive-flex" style={styles.posContainer}>
@@ -522,7 +517,7 @@ const POS = () => {
           </div>
 
           <div className="items-container" style={styles.itemsContainer}>
-            {loading ? (
+            {isDataLoading ? (
               <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '4rem', width: '100%' }}>
                 <Spinner size={40} color="var(--primary-yellow)" />
               </div>

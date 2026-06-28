@@ -6,11 +6,25 @@ const { upload, uploadToCloudinary } = require('../middleware/cloudinary');
 // Get all items (with pagination and search)
 router.get('/', async (req, res) => {
     try {
-        const { page = 1, limit, search } = req.query;
+        const { page = 1, limit, search, category, subCategory } = req.query;
         let query = {};
         
         if (search) {
             query.name = { $regex: search, $options: 'i' };
+        }
+
+        if (subCategory) {
+            query.subCategory = subCategory;
+        }
+
+        if (category) {
+            const Category = require('../models/Category');
+            const catDoc = await Category.findOne({ name: category });
+            if (catDoc) {
+                query.category = catDoc._id;
+            } else {
+                query.category = null; // Forces empty result if category name doesn't exist
+            }
         }
 
         const itemsQuery = Item.find(query).populate('category').sort({ createdAt: -1 });
