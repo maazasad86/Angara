@@ -6,15 +6,11 @@ const { upload, uploadToCloudinary } = require('../middleware/cloudinary');
 // Get all items (with pagination and search)
 router.get('/', async (req, res) => {
     try {
-        const { page = 1, limit, search, category, subCategory } = req.query;
+        const { page = 1, limit, search, category } = req.query;
         let query = {};
         
         if (search) {
             query.name = { $regex: search, $options: 'i' };
-        }
-
-        if (subCategory) {
-            query.subCategory = subCategory;
         }
 
         if (category) {
@@ -53,7 +49,7 @@ router.get('/', async (req, res) => {
 // Add an item
 router.post('/', upload.single('image'), async (req, res) => {
     try {
-        const { name, category, subCategory, kitchenType, price, priceType, spiceLevel, variants, addons } = req.body;
+        const { name, category, kitchenType, price, priceType, spiceLevel, variants, addons } = req.body;
 
         if (!req.file) {
             return res.status(400).json({ message: 'Image is required' });
@@ -78,7 +74,7 @@ router.post('/', upload.single('image'), async (req, res) => {
         }
 
         const newItem = new Item({ 
-            name, category, subCategory, 
+            name, category, 
             kitchenType: kitchenType || 'Fast Food',
             priceType: priceType || 'single',
             price: Number(price) || 0, 
