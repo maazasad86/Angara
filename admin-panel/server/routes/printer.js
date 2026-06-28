@@ -162,12 +162,18 @@ router.post('/', async (req, res) => {
         
         // Execute print
         try {
-            await printer.execute();
-            console.log("Print executed successfully.");
-            res.json({ message: 'Printed successfully', type });
+            if (isConnected) {
+                await printer.execute();
+                console.log("Print executed successfully.");
+                res.json({ message: 'Printed successfully', type });
+            } else {
+                console.warn("Skipping print execution because printer is not connected.");
+                res.json({ message: 'Simulated print (Printer offline)', type });
+            }
         } catch (printErr) {
             console.error("Print Execute Error:", printErr);
-            res.status(500).json({ message: 'Error executing print command', error: printErr.message });
+            // Return 200 instead of 500 so it doesn't fail the order flow
+            res.json({ message: 'Error executing print command, but operation continued', error: printErr.message, type });
         }
     } catch (err) {
         console.error('PRINTER ROUTE ERROR:', err);

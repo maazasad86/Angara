@@ -25,6 +25,11 @@ app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// Fallback for missing uploads to prevent ORB errors (returns JSON instead of HTML)
+app.use('/uploads', (req, res) => {
+    res.status(404).json({ error: 'Image not found' });
+});
+
 // Routes Placeholder
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/categories', require('./routes/categories'));
@@ -34,6 +39,14 @@ app.use('/api/sales', require('./routes/sales'));
 app.use('/api/expenses', require('./routes/expenses'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/print', require('./routes/printer'));
+
+// Catch-all 404 for API routes
+app.use((req, res, next) => {
+    if (req.path.startsWith('/api/')) {
+        return res.status(404).json({ message: 'API Route not found' });
+    }
+    next();
+});
 
 // Error handling middleware
 app.use((err, req, res, next) => {

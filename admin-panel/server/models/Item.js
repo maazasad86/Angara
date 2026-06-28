@@ -10,6 +10,10 @@ const ItemSchema = new mongoose.Schema({
         ref: 'Category',
         required: true
     },
+    subCategory: {
+        type: String,
+        default: null
+    },
     kitchenType: {
         type: String,
         enum: ['Fast Food', 'BBQ', 'Drinks/Extras'],

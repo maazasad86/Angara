@@ -8,6 +8,7 @@ const ItemCreatorModal = ({ isOpen, onClose, itemToEdit, categories, refreshData
   const [formData, setFormData] = useState({
     name: '',
     category: '',
+    subCategory: '',
     kitchenType: 'Fast Food',
     priceType: 'single',
     price: '',
@@ -26,6 +27,7 @@ const ItemCreatorModal = ({ isOpen, onClose, itemToEdit, categories, refreshData
         setFormData({
           name: itemToEdit.name,
           category: itemToEdit.category?._id || '',
+          subCategory: itemToEdit.subCategory || '',
           kitchenType: itemToEdit.kitchenType || 'Fast Food',
           priceType: itemToEdit.priceType || 'single',
           price: itemToEdit.price || '',
@@ -38,7 +40,7 @@ const ItemCreatorModal = ({ isOpen, onClose, itemToEdit, categories, refreshData
         setImagePreview(itemToEdit.image);
       } else {
         setFormData({ 
-          name: '', category: '', kitchenType: 'Fast Food', priceType: 'single', 
+          name: '', category: '', subCategory: '', kitchenType: 'Fast Food', priceType: 'single', 
           price: '', variants: [], spiceLevel: false, addons: [], image: null, isAvailable: true 
         });
         setImagePreview(null);
@@ -50,7 +52,11 @@ const ItemCreatorModal = ({ isOpen, onClose, itemToEdit, categories, refreshData
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData({ ...formData, [name]: type === 'checkbox' ? checked : value });
+    if (name === 'category') {
+      setFormData({ ...formData, [name]: value, subCategory: '' });
+    } else {
+      setFormData({ ...formData, [name]: type === 'checkbox' ? checked : value });
+    }
   };
 
   const handleImageChange = async (e) => {
@@ -109,6 +115,7 @@ const ItemCreatorModal = ({ isOpen, onClose, itemToEdit, categories, refreshData
     const data = new FormData();
     data.append('name', formData.name);
     data.append('category', formData.category);
+    data.append('subCategory', formData.subCategory);
     data.append('kitchenType', formData.kitchenType);
     data.append('priceType', formData.priceType);
     data.append('price', formData.price);
@@ -138,6 +145,9 @@ const ItemCreatorModal = ({ isOpen, onClose, itemToEdit, categories, refreshData
 
   const isEditing = !!itemToEdit;
   const resetForm = onClose;
+
+  const selectedCategoryObj = categories.find(c => c._id === formData.category);
+  const hasSubCategories = selectedCategoryObj && selectedCategoryObj.subCategories && selectedCategoryObj.subCategories.length > 0;
 
   return (
     <div style={styles.modalOverlay}>
@@ -199,6 +209,24 @@ const ItemCreatorModal = ({ isOpen, onClose, itemToEdit, categories, refreshData
                     ))}
                   </select>
                 </div>
+
+                {hasSubCategories && (
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>Sub Category</label>
+                    <select 
+                      name="subCategory" 
+                      value={formData.subCategory} 
+                      onChange={handleInputChange} 
+                      style={styles.input}
+                      required
+                    >
+                      <option value="">Select Sub Category</option>
+                      {selectedCategoryObj.subCategories.map((sub, idx) => (
+                        <option key={idx} value={sub}>{sub}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 <div style={{...styles.formGroup, marginTop: '0.5rem'}}>
                   <label style={styles.toggleLabel}>
