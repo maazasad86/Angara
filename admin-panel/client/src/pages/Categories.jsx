@@ -97,7 +97,7 @@ const Categories = () => {
       }
 
       setShowModal(false);
-      fetchCategories();
+      refreshData();
     } catch (err) {
       alert(err.response?.data?.message || 'Error saving category');
     }
