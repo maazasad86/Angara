@@ -3,19 +3,41 @@ const router = express.Router();
 const Sale = require('../models/Sale');
 const Expense = require('../models/Expense');
 
+// ── Business Day Configuration ─────────────────────────────────────────────
+// OLD system (before July 2, 2026 5 PM PKT): day = calendar midnight → midnight
+// NEW system (from July 2, 2026 5 PM PKT):  day = 5 PM PKT → next day 4:59 PM PKT
+//   5 PM PKT = 12:00 noon UTC  (PKT = UTC+5)
+//
+// CUTOFF = July 2, 2026 at 12:00 UTC (= July 2 5 PM PKT)
+const CUTOFF_UTC = new Date('2026-07-02T12:00:00.000Z');
+const BUSINESS_START_UTC_HOUR = 12; // 12:00 UTC = 17:00 PKT
+
 // Get "Today's Business" Summary
 router.get('/today', async (req, res) => {
     try {
-        // Start of today (midnight)
-        const startOfDay = new Date();
-        startOfDay.setHours(0, 0, 0, 0);
+        const now = new Date();
+        let startOfBusinessDay;
 
-        // Fetch today's sales
-        const todaySales = await Sale.find({ createdAt: { $gte: startOfDay } });
+        if (now < CUTOFF_UTC) {
+            // Before July 2nd 5:00 PM PKT (12:00 UTC), the current active business day is July 1st.
+            // Since July 1st uses the old logic (midnight-to-midnight), we start querying from July 1st 00:00 PKT (June 30th 19:00 UTC).
+            startOfBusinessDay = new Date('2026-06-30T19:00:00.000Z');
+        } else {
+            // ── NEW logic: 5 PM PKT = 12:00 UTC ──────────────────────────────
+            startOfBusinessDay = new Date();
+            startOfBusinessDay.setUTCHours(BUSINESS_START_UTC_HOUR, 0, 0, 0);
+            // If current UTC hour is before noon, business day started yesterday at noon UTC
+            if (now.getUTCHours() < BUSINESS_START_UTC_HOUR) {
+                startOfBusinessDay.setUTCDate(startOfBusinessDay.getUTCDate() - 1);
+            }
+        }
+
+        // Fetch current business day's sales
+        const todaySales = await Sale.find({ createdAt: { $gte: startOfBusinessDay } });
         const totalSales = todaySales.reduce((sum, sale) => sum + (Number(sale.totalAmount) || 0), 0);
 
-        // Fetch today's expenses
-        const todayExpenses = await Expense.find({ createdAt: { $gte: startOfDay } });
+        // Fetch current business day's expenses
+        const todayExpenses = await Expense.find({ createdAt: { $gte: startOfBusinessDay } });
         const totalExpenses = todayExpenses.reduce((sum, expense) => sum + (Number(expense.amount) || 0), 0);
 
         const netCash = totalSales - totalExpenses;

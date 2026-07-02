@@ -37,4 +37,44 @@ router.post('/', async (req, res) => {
     }
 });
 
+// Delete all sales records
+router.delete('/', async (req, res) => {
+    try {
+        const result = await Sale.deleteMany({});
+        res.json({ message: 'All sales records deleted successfully', deletedCount: result.deletedCount });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// Delete a single sale record
+router.delete('/:id', async (req, res) => {
+    try {
+        const sale = await Sale.findByIdAndDelete(req.params.id);
+        if (!sale) {
+            return res.status(404).json({ message: 'Sale record not found' });
+        }
+        res.json({ message: 'Sale record deleted successfully' });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// Move today's sales records to yesterday (30 Jun)
+router.post('/move-today-to-yesterday', async (req, res) => {
+  try {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+    // Decrement createdAt by 1 day (24 hours in ms)
+    const result = await Sale.updateMany({ createdAt: { $gte: start, $lt: end } }, { $inc: { createdAt: -86400000 } });
+    res.json({ message: "Moved today's sales records to yesterday", modifiedCount: result.nModified || result.modifiedCount });
+  } catch (err) {
+    console.error('POST /api/sales/move-today-to-yesterday error:', err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
 module.exports = router;
+

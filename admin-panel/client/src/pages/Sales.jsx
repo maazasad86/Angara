@@ -15,6 +15,35 @@ import {
 import { SkeletonTable } from '../components/Skeleton';
 import { useData } from '../context/DataContext';
 
+// Helper: get current business date string (YYYY-MM-DD)
+// Business day starts at 5 PM (17:00) local time.
+// Before 5 PM → business date is yesterday; after 5 PM → today.
+const getBusinessDateStr = () => {
+  const now = new Date();
+  const BUSINESS_START_HOUR = 17;
+  const biz = new Date(now);
+  if (now.getHours() < BUSINESS_START_HOUR) {
+    biz.setDate(biz.getDate() - 1); // yesterday
+  }
+  const y   = biz.getFullYear();
+  const m   = String(biz.getMonth() + 1).padStart(2, '0');
+  const day = String(biz.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
+const getBusinessMonthStr = () => {
+  const now = new Date();
+  const BUSINESS_START_HOUR = 17;
+  const biz = new Date(now);
+  // If it's the 1st of the month and before 5 PM, we're still in last month's business day
+  if (now.getDate() === 1 && now.getHours() < BUSINESS_START_HOUR) {
+    biz.setDate(0); // last day of previous month
+  }
+  const y = biz.getFullYear();
+  const m = String(biz.getMonth() + 1).padStart(2, '0');
+  return `${y}-${m}`;
+};
+
 const Sales = () => {
   const { categories, isDataLoading } = useData();
   const [sales, setSales] = useState([]);
@@ -25,40 +54,12 @@ const Sales = () => {
   const [itemSearchQuery, setItemSearchQuery] = useState('');
   const [dateFilter, setDateFilter] = useState('all'); // all, today, 7days, 30days, custom
   const [customDateType, setCustomDateType] = useState('day'); // day, week, month, range
-  const [customSingleDate, setCustomSingleDate] = useState(() => {
-    const d = new Date();
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
-  });
-  const [customWeekStart, setCustomWeekStart] = useState(() => {
-    const d = new Date();
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
-  });
-  const [customMonth, setCustomMonth] = useState(() => {
-    const d = new Date();
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    return `${y}-${m}`;
-  });
-  const [customRangeStart, setCustomRangeStart] = useState(() => {
-    const d = new Date();
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
-  });
-  const [customRangeEnd, setCustomRangeEnd] = useState(() => {
-    const d = new Date();
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
-  });
+  // Default to BUSINESS date (not calendar date)
+  const [customSingleDate, setCustomSingleDate] = useState(getBusinessDateStr);
+  const [customWeekStart, setCustomWeekStart] = useState(getBusinessDateStr);
+  const [customMonth, setCustomMonth] = useState(getBusinessMonthStr);
+  const [customRangeStart, setCustomRangeStart] = useState(getBusinessDateStr);
+  const [customRangeEnd, setCustomRangeEnd] = useState(getBusinessDateStr);
   
   // Tabs
   const [activeTab, setActiveTab] = useState('itemized'); // itemized, transactions
@@ -98,60 +99,124 @@ const Sales = () => {
     }
   };
 
+  // Business Day Helper: day starts at 5 PM (17:00) local time
+  // e.g. July 1 5PM → July 2 4:59PM = "July 1 business day"
+  const getBusinessDayStart = (date = new Date()) => {
+    const CUTOFF_MS = new Date('2026-07-02T17:00:00').getTime(); // July 2 5 PM local
+    if (date.getTime() < CUTOFF_MS) {
+      // Before July 2nd 5 PM PKT, "Today" (July 1st business day) starts at July 1st 00:00 AM local
+      return new Date('2026-07-01T00:00:00');
+    }
+    const BUSINESS_START_HOUR = 17; // 5 PM local
+    const d = new Date(date);
+    d.setHours(BUSINESS_START_HOUR, 0, 0, 0);
+    if (date.getHours() < BUSINESS_START_HOUR) {
+      // Before 5 PM → business day started yesterday at 5 PM
+      d.setDate(d.getDate() - 1);
+    }
+    return d;
+  };
+
+  // ─── BUSINESS DAY CUTOFF ───────────────────────────────────────────────────
+  // Records BEFORE July 2, 2026 → old midnight-to-midnight filtering (unchanged)
+  // Records from July 2, 2026 onwards → new 5 PM-to-5 PM business day logic
+  const CUTOFF_DATE_STR = '2026-07-02'; // first date using new business day
+
   // 1. Date Filter Logic
   const salesByDate = useMemo(() => {
     const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    // Business day start (new logic): today at 5 PM, or yesterday at 5 PM if before 5 PM now
+    const bizDayStart = getBusinessDayStart(now);
+    const todayStart  = bizDayStart.getTime();
     
     return sales.filter(sale => {
-      const saleDate = new Date(sale.createdAt);
+      const saleDate     = new Date(sale.createdAt);
       const saleDateTime = saleDate.getTime();
       
       if (dateFilter === 'today') {
         return saleDateTime >= todayStart;
+
       } else if (dateFilter === '7days') {
         const sevenDaysAgo = todayStart - 7 * 24 * 60 * 60 * 1000;
         return saleDateTime >= sevenDaysAgo;
+
       } else if (dateFilter === '30days') {
         const thirtyDaysAgo = todayStart - 30 * 24 * 60 * 60 * 1000;
         return saleDateTime >= thirtyDaysAgo;
+
       } else if (dateFilter === 'custom') {
+
+        // ── Single Day ──────────────────────────────────────────────────────
         if (customDateType === 'day' && customSingleDate) {
-          const y = saleDate.getFullYear();
-          const m = String(saleDate.getMonth() + 1).padStart(2, '0');
-          const d = String(saleDate.getDate()).padStart(2, '0');
-          const localSaleDateStr = `${y}-${m}-${d}`;
-          return localSaleDateStr === customSingleDate;
+          const [y, mo, d] = customSingleDate.split('-').map(Number);
+          if (customSingleDate < CUTOFF_DATE_STR) {
+            // OLD records: midnight → midnight (unchanged)
+            const dayStart = new Date(y, mo - 1, d,  0,  0,  0,   0);
+            const dayEnd   = new Date(y, mo - 1, d, 23, 59, 59, 999);
+            return saleDateTime >= dayStart.getTime() && saleDateTime <= dayEnd.getTime();
+          } else {
+            // NEW records: 5 PM → next day 4:59 PM
+            const bizStart = new Date(y, mo - 1, d,     17,  0,  0,   0);
+            const bizEnd   = new Date(y, mo - 1, d + 1, 16, 59, 59, 999);
+            return saleDateTime >= bizStart.getTime() && saleDateTime <= bizEnd.getTime();
+          }
+
+        // ── Specific Week ───────────────────────────────────────────────────
         } else if (customDateType === 'week' && customWeekStart) {
-          const start = new Date(customWeekStart);
-          start.setHours(0, 0, 0, 0);
-          const end = new Date(start.getTime() + 7 * 24 * 60 * 60 * 1000 - 1);
-          return saleDateTime >= start.getTime() && saleDateTime <= end.getTime();
+          const [y, mo, d] = customWeekStart.split('-').map(Number);
+          if (customWeekStart < CUTOFF_DATE_STR) {
+            // OLD: week starts at midnight
+            const start = new Date(y, mo - 1, d,  0,  0,  0,   0);
+            const end   = new Date(start.getTime() + 7 * 24 * 60 * 60 * 1000 - 1);
+            return saleDateTime >= start.getTime() && saleDateTime <= end.getTime();
+          } else {
+            // NEW: week starts at 5 PM
+            const start = new Date(y, mo - 1, d, 17,  0,  0,   0);
+            const end   = new Date(start.getTime() + 7 * 24 * 60 * 60 * 1000 - 1);
+            return saleDateTime >= start.getTime() && saleDateTime <= end.getTime();
+          }
+
+        // ── Specific Month ──────────────────────────────────────────────────
         } else if (customDateType === 'month' && customMonth) {
-          const y = saleDate.getFullYear();
-          const m = String(saleDate.getMonth() + 1).padStart(2, '0');
-          const localSaleMonthStr = `${y}-${m}`;
-          return localSaleMonthStr === customMonth;
+          const [y, mo] = customMonth.split('-').map(Number);
+          const monthStr = customMonth + '-01';
+          if (monthStr < CUTOFF_DATE_STR) {
+            // OLD: full calendar month midnight-to-midnight
+            const start = new Date(y, mo - 1,  1,  0,  0,  0,   0);
+            const end   = new Date(y, mo,       0, 23, 59, 59, 999); // last day of month
+            return saleDateTime >= start.getTime() && saleDateTime <= end.getTime();
+          } else {
+            // NEW: month starts on 1st at 5 PM → next month 1st at 4:59 PM
+            const start = new Date(y, mo - 1,  1, 17,  0,  0,   0);
+            const end   = new Date(y, mo,       1, 16, 59, 59, 999);
+            return saleDateTime >= start.getTime() && saleDateTime <= end.getTime();
+          }
+
+        // ── Custom Range ────────────────────────────────────────────────────
         } else if (customDateType === 'range') {
           let startValid = true;
-          let endValid = true;
-          
+          let endValid   = true;
           if (customRangeStart) {
-            const start = new Date(customRangeStart);
-            start.setHours(0, 0, 0, 0);
+            const [y, mo, d] = customRangeStart.split('-').map(Number);
+            const start = customRangeStart < CUTOFF_DATE_STR
+              ? new Date(y, mo - 1, d,  0,  0,  0,   0) // OLD: midnight
+              : new Date(y, mo - 1, d, 17,  0,  0,   0); // NEW: 5 PM
             startValid = saleDateTime >= start.getTime();
           }
           if (customRangeEnd) {
-            const end = new Date(customRangeEnd);
-            end.setHours(23, 59, 59, 999);
+            const [y, mo, d] = customRangeEnd.split('-').map(Number);
+            const end = customRangeEnd < CUTOFF_DATE_STR
+              ? new Date(y, mo - 1, d,     23, 59, 59, 999) // OLD: midnight
+              : new Date(y, mo - 1, d + 1, 16, 59, 59, 999); // NEW: 5 PM next day
             endValid = saleDateTime <= end.getTime();
           }
           return startValid && endValid;
         }
       }
-      return true; // all
+      return true; // 'all' filter
     });
   }, [sales, dateFilter, customDateType, customSingleDate, customWeekStart, customMonth, customRangeStart, customRangeEnd]);
+
 
   // 2. Aggregate Itemized Sales from Sales list
   const allItemizedSales = useMemo(() => {
